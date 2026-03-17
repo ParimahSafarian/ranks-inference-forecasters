@@ -59,12 +59,8 @@ def rank_confidence_intervals_bootstrap(
         theta_b = Xb.mean(axis=0)
         delta_b = theta_b[:, None] - theta_b[None, :]
 
-        Db = Xb[:, :, None] - Xb[:, None, :]
-        se_b = Db.std(axis=0, ddof=1) / np.sqrt(n)
-        np.fill_diagonal(se_b, np.nan)
-
         # Standardized bootstrap pairwise errors
-        Zb = (delta_b - delta_hat) / se_b
+        Zb = (delta_b - delta_hat) / se    # it's important to use the original se, not the bootstrap se, for studentization
         T_boot[b] = np.nanmax(np.abs(Zb[off_diag]))
 
     critical_value = np.quantile(T_boot, 1 - alpha)
