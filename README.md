@@ -17,7 +17,8 @@ Three variants of the procedure are implemented: a **simultaneous bootstrap**, a
 
 ```
 ├── data/
-│   └── SPFmicrodata.xlsx        # Survey of Professional Forecasters panel data
+│   ├── SPFmicrodata.xlsx        # Survey of Professional Forecasters panel data
+|   └── GDP.xlsx                 # FRED Annual GDP seasonaly adjusted
 ├── notebooks/
 │   ├── EDA.ipynb                # Exploratory data analysis: forecaster participation, panel structure
 │   ├── 01_Analysis.ipynb        # Main analysis: all three CI methods and comparisons
