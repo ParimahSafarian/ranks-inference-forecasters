@@ -4,6 +4,7 @@ from .bootstrap import rank_confidence_intervals_bootstrap
 from .simulation import rank_confidence_intervals_simulation
 from .stepwise import rank_ci_stepwise, rank_ci_stepwise_pairwise
 from .pairwise import compute_pairwise, nw_se
+from .data import load_spf, load_rtdsm, compute_errors, compute_squared_error_panel, select_top_forecasters
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
@@ -12,4 +13,9 @@ __all__ = [
     "rank_ci_stepwise_pairwise",
     "compute_pairwise",
     "nw_se",
+    "load_spf",
+    "load_rtdsm",
+    "compute_errors",
+    "compute_squared_error_panel",
+    "select_top_forecasters",
 ]
