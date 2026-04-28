@@ -101,6 +101,7 @@ def rank_ci_stepwise_pairwise(
     B: int = 5000,
     seed: int | None = None,
     se_method: str = "nw",
+    winsor_pct: float | None = None,
     verbose: bool = True,
 ) -> dict:
     """
@@ -110,16 +111,20 @@ def rank_ci_stepwise_pairwise(
 
     Parameters
     ----------
-    X         : (n, p) array, may contain NaN.
-    se_method : "nw" for Newey-West HAC, "iid" for plain SE.
-    verbose   : print diagnostic summary.
+    X          : (n, p) array, may contain NaN.
+    se_method  : "nw" for Newey-West HAC, "iid" for plain SE.
+    winsor_pct : if set (e.g. 95), symmetrically winsorize each pairwise
+                 difference series before computing the SE.
+    verbose    : print diagnostic summary.
     """
     rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
     n, p = X.shape
 
     theta_hat = np.nanmean(X, axis=0)
-    delta_hat, se, n_pairs = compute_pairwise(X, se_method=se_method)
+    delta_hat, se, n_pairs = compute_pairwise(
+        X, se_method=se_method, winsor_pct=winsor_pct,
+    )
 
     if verbose:
         valid = n_pairs[n_pairs > 0]

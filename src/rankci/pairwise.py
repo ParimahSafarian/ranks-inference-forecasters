@@ -9,29 +9,46 @@ import numpy as np
 
 # ── Newey-West HAC SE ────────────────────────────────────────────────────────
 
-def nw_se(d: np.ndarray, L: int | None = None) -> float:
+def nw_se(
+    d: np.ndarray,
+    L: int | None = None,
+    winsor_pct: float | None = None,
+) -> tuple[float, float]:
     """
     Newey-West HAC standard error for the mean of 1-D time series d.
 
     Parameters
     ----------
-    d : 1-D array of pairwise differences (no NaNs).
-    L : bandwidth (number of lags).  If None, uses the automatic rule
-        L = floor(4 * (n/100)^{2/9}).
+    d          : 1-D array of pairwise differences (no NaNs).
+    L          : bandwidth. If None, uses the automatic rule
+                 L = floor(4 * (n/100)^{2/9}).
+    winsor_pct : if set (e.g. 95), symmetrically winsorize d at the
+                 (100 - winsor_pct, winsor_pct) percentiles before
+                 computing the mean and SE. None disables winsorization.
+
+    Returns
+    -------
+    (mean, se) of the (possibly winsorized) series.
     """
     n = len(d)
     if L is None:
         L = int(np.floor(4 * (n / 100) ** (2 / 9)))
     L = min(L, n - 1)
 
-    dc = d - d.mean()
+    if winsor_pct is not None:
+        lo = np.percentile(d, 100 - winsor_pct)
+        hi = np.percentile(d, winsor_pct)
+        d = np.clip(d, lo, hi)
+
+    mean = d.mean()
+    dc = d - mean
 
     V = np.dot(dc, dc) / n                          # lag-0
     for tau in range(1, L + 1):
         w = 1.0 - tau / (L + 1)                     # Bartlett kernel
         V += 2.0 * w * np.dot(dc[tau:], dc[:-tau]) / n
 
-    return np.sqrt(max(V, 0.0) / n)
+    return mean, np.sqrt(max(V, 0.0) / n)
 
 
 # ── Pairwise statistics ──────────────────────────────────────────────────────
@@ -40,6 +57,7 @@ def compute_pairwise(
     X: np.ndarray,
     se_method: str = "nw",
     L: int | None = None,
+    winsor_pct: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Pairwise mean differences and standard errors, handling NaN (unbalanced panels).
@@ -48,9 +66,12 @@ def compute_pairwise(
 
     Parameters
     ----------
-    X         : (n, p) array of observations, may contain NaN.
-    se_method : "nw" for Newey-West HAC, "iid" for plain std/sqrt(n).
-    L         : NW bandwidth (ignored if se_method="iid").
+    X          : (n, p) array of observations, may contain NaN.
+    se_method  : "nw" for Newey-West HAC, "iid" for plain std/sqrt(n).
+    L          : NW bandwidth (ignored if se_method="iid").
+    winsor_pct : if set (e.g. 95), symmetrically winsorize each pairwise
+                 difference series at (100-pct, pct) percentiles before
+                 computing the mean and SE. Only used when se_method="nw".
 
     Returns
     -------
@@ -73,12 +94,12 @@ def compute_pairwise(
                 continue
 
             d = X[mask, j] - X[mask, k]
-            delta_hat[j, k] = d.mean()
-            n_pairs[j, k]   = n_jk
+            n_pairs[j, k] = n_jk
 
             if se_method == "nw":
-                se_mat[j, k] = nw_se(d, L)
+                delta_hat[j, k], se_mat[j, k] = nw_se(d, L, winsor_pct)
             else:
+                delta_hat[j, k] = d.mean()
                 se_mat[j, k] = d.std(ddof=1) / np.sqrt(n_jk)
 
     return delta_hat, se_mat, n_pairs

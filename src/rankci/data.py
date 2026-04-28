@@ -157,6 +157,35 @@ def compute_squared_error_panel(
     return wide
 
 
+def winsorize_panel(
+    X: np.ndarray,
+    upper_pct: float = 95,
+) -> np.ndarray:
+    """
+    Winsorize each column of X at its upper percentile (NaNs preserved).
+
+    For squared errors, only the upper tail needs clipping (lower bound is 0).
+
+    Parameters
+    ----------
+    X         : (n, p) array, may contain NaN.
+    upper_pct : percentile cap (e.g. 95 = clip top 5%).
+
+    Returns
+    -------
+    Winsorized copy of X (same shape, NaNs preserved).
+    """
+    Xw = X.copy()
+    for j in range(X.shape[1]):
+        col = X[:, j]
+        valid = ~np.isnan(col)
+        if not valid.any():
+            continue
+        cap = np.percentile(col[valid], upper_pct)
+        Xw[valid, j] = np.clip(col[valid], None, cap)
+    return Xw
+
+
 def select_top_forecasters(
     X_wide: pd.DataFrame,
     N: int,
