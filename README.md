@@ -21,7 +21,7 @@ Three variants of the procedure are implemented: a **simultaneous bootstrap**, a
 |   └── GDP.xlsx                 # FRED Annual GDP seasonaly adjusted
 ├── notebooks/
 │   ├── EDA.ipynb                # Exploratory data analysis: forecaster participation, panel structure
-│   ├── 01_Analysis.ipynb        # Main analysis: all three CI methods and comparisons
+│   ├── 01_Analysis.ipynb        # First analysis: all three CI methods and comparisons
 │   ├── Bootstrap.py             # Simultaneous bootstrap rank CI (Algorithm 3.1)
 │   ├── Simulation.py            # Asymptotic simulation rank CI
 │   └── Stepwise_bootstrap.py   # Stepwise bootstrap rank CI (Algorithm 3.2)
