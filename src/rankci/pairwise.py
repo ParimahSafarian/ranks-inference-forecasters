@@ -111,24 +111,28 @@ def rank_ci_from_pairwise_ci(pairwise_ci: np.ndarray, p: int) -> np.ndarray:
     """
     Convert (p, p, 2) pairwise confidence intervals to (p, 2) rank CIs.
 
+    Ranks are in ASCENDING order of theta (rank 1 = smallest theta = best for MSE).
+
     CI(j,k) = [lower, upper] for delta_{j,k} = theta_j - theta_k.
-      - upper < 0  =>  k is better than j   (count toward n_minus)
-      - lower > 0  =>  j is better than k   (count toward n_plus)
+      - lower > 0  =>  theta_j > theta_k confirmed  =>  k BETTER than j
+      - upper < 0  =>  theta_j < theta_k confirmed  =>  k WORSE  than j
+
+    Then  rank_ci[j] = [(# better than j) + 1, p - (# worse than j)].
     """
     rank_ci = np.empty((p, 2), dtype=int)
     for j in range(p):
-        n_minus = n_plus = 0
+        n_better = n_worse = 0
         for k in range(p):
             if j == k:
                 continue
             ljk, ujk = pairwise_ci[j, k]
             if np.isnan(ljk) or np.isnan(ujk):
                 continue
-            if ujk < 0:
-                n_minus += 1
-            elif ljk > 0:
-                n_plus += 1
-        rank_ci[j] = [n_minus + 1, p - n_plus]
+            if ljk > 0:
+                n_better += 1
+            elif ujk < 0:
+                n_worse += 1
+        rank_ci[j] = [n_better + 1, p - n_worse]
     return rank_ci
 
 
@@ -136,11 +140,18 @@ def rank_ci_from_rejections(rejected: set, p: int) -> np.ndarray:
     """
     Convert a set of rejected pairs {(j,k)} to (p, 2) rank CIs.
 
-    (j, k) in rejected  =>  theta_j > theta_k  (j confirmed worse than k).
+    Ranks are in ASCENDING order of theta (rank 1 = smallest theta = best for MSE).
+
+    (j, k) in rejected  =>  theta_j > theta_k confirmed  =>  k BETTER than j
+                                                              j WORSE  than k
+
+    For forecaster j:
+      n_better = |{k : (j, k) in rejected}|   (k confirmed better than j)
+      n_worse  = |{k : (k, j) in rejected}|   (k confirmed worse  than j)
     """
     rank_ci = np.empty((p, 2), dtype=int)
     for j in range(p):
-        rej_minus = sum(1 for k in range(p) if k != j and (k, j) in rejected)
-        rej_plus  = sum(1 for k in range(p) if k != j and (j, k) in rejected)
-        rank_ci[j] = [rej_minus + 1, p - rej_plus]
+        n_better = sum(1 for k in range(p) if k != j and (j, k) in rejected)
+        n_worse  = sum(1 for k in range(p) if k != j and (k, j) in rejected)
+        rank_ci[j] = [n_better + 1, p - n_worse]
     return rank_ci
