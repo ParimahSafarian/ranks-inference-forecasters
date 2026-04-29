@@ -22,51 +22,81 @@ def load_spf(path: str, sheet: str = "NGDP") -> pd.DataFrame:
 
 # ── RTDSM vintage matrix ────────────────────────────────────────────────────
 
-def load_rtdsm(path: str) -> pd.DataFrame:
+def load_rtdsm(
+    path: str,
+    prefix: str = "NOUTPUT",
+    freq: str = "quarterly",
+) -> pd.DataFrame:
     """
-    Load the NOUTPUT vintage matrix and index by (YEAR, QUARTER).
+    Load a Philly Fed real-time vintage matrix, indexed by (YEAR, QUARTER).
 
-    The DATE column (e.g. "1947:Q1") is parsed into integer YEAR and QUARTER.
+    Parameters
+    ----------
+    path   : path to the Excel file.
+    prefix : column-name prefix (e.g. "NOUTPUT" for GDP, "RUC" for unemployment).
+             Stored on the returned DataFrame as `.attrs['prefix']` so the
+             rest of the pipeline can find it.
+    freq   : "quarterly" — DATE like "1947:Q1", one row per quarter.
+             "monthly"   — DATE like "1947:01", averaged to quarterly.
     """
-    noutput = pd.read_excel(path)
-    noutput[["YEAR", "QUARTER"]] = (
-        noutput["DATE"]
-        .str.extract(r"(\d{4}):Q(\d)")
-        .astype(int)
-    )
-    noutput = noutput.set_index(["YEAR", "QUARTER"]).drop(columns=["DATE"], errors="ignore")
-    return noutput
+    df = pd.read_excel(path)
+
+    if freq == "quarterly":
+        df[["YEAR", "QUARTER"]] = (
+            df["DATE"].str.extract(r"(\d{4}):Q(\d)").astype(int)
+        )
+        df = df.set_index(["YEAR", "QUARTER"]).drop(columns=["DATE"], errors="ignore")
+    elif freq == "monthly":
+        df[["YEAR", "MONTH"]] = (
+            df["DATE"].str.extract(r"(\d{4}):(\d{2})").astype(int)
+        )
+        df["QUARTER"] = ((df["MONTH"] - 1) // 3) + 1
+        df = (
+            df.drop(columns=["DATE", "MONTH"])
+              .groupby(["YEAR", "QUARTER"]).mean()
+        )
+    else:
+        raise ValueError(f"freq must be 'quarterly' or 'monthly', got {freq!r}")
+
+    df.attrs["prefix"] = prefix
+    return df
 
 
-def advance_vintage_col(target_year: int, target_quarter: int) -> str:
+def advance_vintage_col(
+    target_year: int,
+    target_quarter: int,
+    prefix: str = "NOUTPUT",
+) -> str:
     """
     Return the RTDSM column name for the advance estimate of a target quarter.
 
     The advance estimate is published in the following quarter's vintage:
-        Q1 → NOUTPUTYYQ2, Q2 → NOUTPUTYYQ3, Q3 → NOUTPUTYYQ4,
-        Q4 → NOUTPUT(YY+1)Q1.
+        Q1 → {prefix}YYQ2, Q2 → {prefix}YYQ3, Q3 → {prefix}YYQ4,
+        Q4 → {prefix}(YY+1)Q1.
     """
     adv_quarter = target_quarter + 1
     adv_year = target_year
     if adv_quarter > 4:
         adv_quarter = 1
         adv_year += 1
-    return f"NOUTPUT{str(adv_year)[2:]}Q{adv_quarter}"
+    return f"{prefix}{str(adv_year)[2:]}Q{adv_quarter}"
 
 
 def get_advance_estimate(
     target_year: int,
     target_quarter: int,
-    noutput: pd.DataFrame,
+    rtdsm: pd.DataFrame,
 ) -> float:
     """
     Look up the advance estimate for a single target quarter.
 
+    Uses `rtdsm.attrs['prefix']` to build the column name; defaults to "NOUTPUT".
     Returns np.nan if the quarter or vintage column is missing.
     """
-    col = advance_vintage_col(target_year, target_quarter)
+    prefix = rtdsm.attrs.get("prefix", "NOUTPUT")
+    col = advance_vintage_col(target_year, target_quarter, prefix)
     try:
-        val = noutput.loc[(target_year, target_quarter), col]
+        val = rtdsm.loc[(target_year, target_quarter), col]
         return val if not pd.isna(val) else np.nan
     except KeyError:
         return np.nan
@@ -74,51 +104,41 @@ def get_advance_estimate(
 
 # ── Forecast error computation ───────────────────────────────────────────────
 
-HORIZON_OFFSETS = {
-    "NGDP1": -1,   # t-1  (previous quarter, near-historical)
-    "NGDP2":  0,   # t+0  (nowcast)
-    "NGDP3":  1,   # t+1  (one-quarter-ahead)
-    "NGDP4":  2,   # t+2
-    "NGDP5":  3,   # t+3
-    "NGDP6":  4,   # t+4
-}
+# Horizon offsets (in quarters) applied to the survey quarter to get the target.
+# Same convention across SPF indicators: 1 = previous (history), 2 = nowcast, 3..6 = ahead.
+HORIZON_OFFSETS = {1: -1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4}
 
 
 def compute_errors(
     df: pd.DataFrame,
-    noutput: pd.DataFrame,
-    horizons: dict[str, int] | None = None,
+    rtdsm: pd.DataFrame,
+    indicator: str = "NGDP",
 ) -> pd.DataFrame:
     """
     Compute forecast errors for each horizon: error = forecast - advance estimate.
 
     Parameters
     ----------
-    df      : SPF microdata with columns YEAR, QUARTER, ID, INDUSTRY, NGDP1..NGDP6.
-    noutput : RTDSM vintage matrix indexed by (YEAR, QUARTER).
-    horizons: dict mapping column name to quarter offset.
-              Defaults to HORIZON_OFFSETS (NGDP1..NGDP6).
-
-    Returns
-    -------
-    DataFrame with columns: YEAR, QUARTER, ID, INDUSTRY, error_NGDP1..error_NGDP6.
+    df        : SPF microdata with columns YEAR, QUARTER, ID, INDUSTRY,
+                {indicator}1..{indicator}6.
+    rtdsm     : RTDSM vintage matrix indexed by (YEAR, QUARTER).
+    indicator : SPF column prefix, e.g. "NGDP" or "UNEMP".
     """
-    if horizons is None:
-        horizons = HORIZON_OFFSETS
+    horizon_cols = [f"{indicator}{h}" for h in HORIZON_OFFSETS]
+    errors = df[["YEAR", "QUARTER", "ID", "INDUSTRY"] + horizon_cols].copy()
 
-    errors = df[["YEAR", "QUARTER", "ID", "INDUSTRY"] + list(horizons.keys())].copy()
-
-    for col, offset in horizons.items():
+    for h, offset in HORIZON_OFFSETS.items():
+        col = f"{indicator}{h}"
         total = (errors["YEAR"] - 1) * 4 + (errors["QUARTER"] - 1) + offset
         t_year = ((total // 4) + 1).astype(int)
         t_qtr = ((total % 4) + 1).astype(int)
 
-        gdp_actual = np.array([
-            get_advance_estimate(y, q, noutput)
+        actual = np.array([
+            get_advance_estimate(y, q, rtdsm)
             for y, q in zip(t_year, t_qtr)
         ])
 
-        errors[f"error_{col}"] = errors[col].values - gdp_actual
+        errors[f"error_{col}"] = errors[col].values - actual
         errors.drop(columns=[col], inplace=True)
 
     return errors
@@ -126,25 +146,22 @@ def compute_errors(
 
 def compute_squared_error_panel(
     df: pd.DataFrame,
-    noutput: pd.DataFrame,
-    horizon: str = "NGDP3",
+    rtdsm: pd.DataFrame,
+    indicator: str = "NGDP",
+    horizon: int = 3,
 ) -> pd.DataFrame:
     """
     End-to-end: compute errors → square → pivot to wide (rows=quarters, cols=forecaster IDs).
 
     Parameters
     ----------
-    df      : SPF microdata.
-    noutput : RTDSM vintage matrix.
-    horizon : which horizon column to keep (default "NGDP3").
-
-    Returns
-    -------
-    Wide DataFrame indexed by (YEAR, QUARTER) with one column per forecaster ID,
-    values are squared forecast errors.
+    df        : SPF microdata.
+    rtdsm     : RTDSM vintage matrix.
+    indicator : SPF column prefix, e.g. "NGDP" or "UNEMP".
+    horizon   : which horizon (1..6) to keep. Default 3 = one-quarter-ahead.
     """
-    errors = compute_errors(df, noutput)
-    error_col = f"error_{horizon}"
+    errors = compute_errors(df, rtdsm, indicator=indicator)
+    error_col = f"error_{indicator}{horizon}"
 
     panel = errors[["YEAR", "QUARTER", "ID", error_col]].copy()
     panel["squared_error"] = panel[error_col] ** 2
