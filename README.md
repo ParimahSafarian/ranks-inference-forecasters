@@ -24,6 +24,7 @@ on point estimates alone.
   - `EDA.ipynb` — exploratory look at panel structure and participation.
 - `data/` — SPF microdata and the RTDSM vintage matrices used as
   realizations.
+  'https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/ruc'
 
 ## Setup
 
