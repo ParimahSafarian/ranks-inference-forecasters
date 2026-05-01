@@ -160,3 +160,78 @@ def rank_ci_stepwise_pairwise(
         "rank_ci": rank_ci_from_rejections(rejected, p),
         "n_pairs": n_pairs,
     }
+
+
+# ── Marginal (per-forecaster) CIs ────────────────────────────────────────────
+
+def rank_ci_marginal_pairwise(
+    X: np.ndarray,
+    alpha: float = 0.05,
+    B: int = 5000,
+    seed: int | None = None,
+    se_method: str = "nw",
+    winsor_pct: float | None = None,
+) -> dict:
+    """
+    Marginal (per-forecaster) rank CIs for unbalanced panels.
+
+    For each forecaster j, P(rank_j ∈ CI_j) ≥ 1 - α holds *marginally* —
+    the joint coverage across forecasters is NOT controlled.  Each j gets
+    its own bootstrap critical value, computed from the 2(p-1) one-sided
+    test statistics involving j.  Tighter than the simultaneous procedure.
+
+    Parameters
+    ----------
+    X          : (n, p) array, may contain NaN.
+    se_method  : "nw" for Newey-West HAC, "iid" for plain SE.
+    winsor_pct : if set, symmetrically winsorize each pairwise difference
+                 series before computing the SE.
+
+    Returns
+    -------
+    dict with keys: theta_hat, rank_ci, n_pairs, critical_values (one per j).
+    """
+    rng = np.random.default_rng(seed)
+    X = np.asarray(X, dtype=float)
+    n, p = X.shape
+
+    theta_hat = np.nanmean(X, axis=0)
+    delta_hat, se, n_pairs = compute_pairwise(
+        X, se_method=se_method, winsor_pct=winsor_pct,
+    )
+
+    rank_ci = np.empty((p, 2), dtype=int)
+    cvs = np.empty(p)
+
+    for j in range(p):
+        # All pairs involving j (both directions): 2(p-1) one-sided tests
+        pairs_j = [
+            (a, c)
+            for a, c in (
+                [(j, k) for k in range(p) if k != j]
+                + [(k, j) for k in range(p) if k != j]
+            )
+            if not np.isnan(se[a, c])
+        ]
+
+        cv_j = _bootstrap_cv_pairwise(X, delta_hat, se, pairs_j, alpha, B, rng)
+        cvs[j] = cv_j
+
+        n_better = sum(
+            1 for k in range(p) if k != j
+            and not np.isnan(se[j, k])
+            and (delta_hat[j, k] - cv_j * se[j, k]) > 0
+        )
+        n_worse = sum(
+            1 for k in range(p) if k != j
+            and not np.isnan(se[k, j])
+            and (delta_hat[k, j] - cv_j * se[k, j]) > 0
+        )
+        rank_ci[j] = [n_better + 1, p - n_worse]
+
+    return {
+        "theta_hat": theta_hat,
+        "rank_ci": rank_ci,
+        "n_pairs": n_pairs,
+        "critical_values": cvs,
+    }
