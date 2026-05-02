@@ -16,23 +16,45 @@ from .pairwise import (
 # ── Complete-cases stepwise ──────────────────────────────────────────────────
 
 def _compute_se_complete(X: np.ndarray) -> np.ndarray:
-    """IID pairwise SE for a complete (no NaN) matrix."""
+    """IID pairwise SE for a complete (no NaN) matrix.
+    
+    se[j, k] = sd(X[:, j] - X[:, k]) / sqrt(n).
+    Diagonal is NaN.
+    """
     n = X.shape[0]
-    D = X[:, :, None] - X[:, None, :]
-    se = D.std(axis=0, ddof=1) / np.sqrt(n)
+    D = X[:, :, None] - X[:, None, :]          # shape (n, p, p)
+    se = D.std(axis=0, ddof=1) / np.sqrt(n)    # shape (p, p)
     np.fill_diagonal(se, np.nan)
     return se
 
 
-def _bootstrap_cv_complete(X, theta_hat, se, active_pairs, alpha, B, rng):
-    """One-sided bootstrap critical value — complete-cases."""
+
+
+def _bootstrap_cv_complete(X, theta_hat, active_pairs, alpha, B, rng):
+    """One-sided bootstrap critical value — complete-cases.
+    
+    Implements the fully studentized bootstrap of Mogstad et al. (2024) eq. (6)
+    with P replaced by the empirical distribution P_hat_n: in each bootstrap
+    replication b, both the pairwise mean differences AND the pairwise standard
+    errors are recomputed on the resampled data.
+    
+    The bootstrap test statistic for pair (k, l) in replication b is
+    
+        T*_{b, k, l} = ((theta*_b[k] - theta*_b[l]) - (theta_hat[k] - theta_hat[l]))
+                       / se*_b[k, l]
+    
+    and T_b = max over active pairs of T*_{b, k, l}. The critical value is the
+    (1 - alpha) empirical quantile of {T_b}_{b=1}^B.
+    """
     n = X.shape[0]
     T = np.empty(B)
     for b in range(B):
-        idx = rng.integers(0, n, size=n)
-        theta_b = X[idx].mean(axis=0)
+        idx     = rng.integers(0, n, size=n)
+        Xb      = X[idx]
+        theta_b = Xb.mean(axis=0)
+        se_b    = _compute_se_complete(Xb)   # recomputed on the bootstrap sample
         T[b] = max(
-            ((theta_b[k] - theta_b[l]) - (theta_hat[k] - theta_hat[l])) / se[k, l]
+            ((theta_b[k] - theta_b[l]) - (theta_hat[k] - theta_hat[l])) / se_b[k, l]
             for k, l in active_pairs
         )
     return float(np.quantile(T, 1 - alpha))
@@ -57,7 +79,7 @@ def rank_ci_stepwise(
     rejected = set()
 
     while active:
-        cv = _bootstrap_cv_complete(X, theta_hat, se, list(active), alpha, B, rng)
+        cv = _bootstrap_cv_complete(X, theta_hat, list(active), alpha, B, rng)
         new_rejections = {
             (k, l) for (k, l) in active
             if delta_hat[k, l] - cv * se[k, l] > 0
