@@ -12,7 +12,7 @@ from .data import (
     load_spf,
     load_rtdsm,
     compute_errors,
-    compute_squared_error_panel,
+    compute_error_panel,
     select_top_forecasters,
     winsorize_panel,
 )
@@ -28,7 +28,7 @@ __all__ = [
     "load_spf",
     "load_rtdsm",
     "compute_errors",
-    "compute_squared_error_panel",
+    "compute_error_panel",
     "select_top_forecasters",
     "winsorize_panel",
 ]

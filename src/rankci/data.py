@@ -6,8 +6,8 @@ Data loading and error computation for SPF / RTDSM analysis.
 - advance_vintage_col:       Map a target quarter to its advance-estimate column name.
 - get_advance_estimate:      Look up a single advance estimate.
 - compute_errors:            Compute forecast errors for all horizons, return a long DataFrame.
-- compute_squared_error_panel: Convenience wrapper — compute errors, square them,
-                               filter to one horizon, and pivot to wide format.
+- compute_error_panel:       Convenience wrapper — compute errors, transform
+                             (squared or absolute), filter to one horizon, pivot to wide.
 """
 import numpy as np
 import pandas as pd
@@ -124,35 +124,39 @@ def compute_errors(
     return errors
 
 
-def compute_squared_error_panel(
+def compute_error_panel(
     df: pd.DataFrame,
     noutput: pd.DataFrame,
     horizon: str = "NGDP3",
+    metric: str = "squared",
 ) -> pd.DataFrame:
     """
-    End-to-end: compute errors → square → pivot to wide (rows=quarters, cols=forecaster IDs).
+    End-to-end: compute errors → transform → pivot to wide
+    (rows=quarters, cols=forecaster IDs).
 
     Parameters
     ----------
     df      : SPF microdata.
     noutput : RTDSM vintage matrix.
     horizon : which horizon column to keep (default "NGDP3").
-
-    Returns
-    -------
-    Wide DataFrame indexed by (YEAR, QUARTER) with one column per forecaster ID,
-    values are squared forecast errors.
+    metric  : "squared"  → X_it = (error_it)²  (used for MSE ranking)
+              "absolute" → X_it = |error_it|   (used for MAE ranking)
     """
     errors = compute_errors(df, noutput)
     error_col = f"error_{horizon}"
 
     panel = errors[["YEAR", "QUARTER", "ID", error_col]].copy()
-    panel["squared_error"] = panel[error_col] ** 2
+    if metric == "squared":
+        panel["value"] = panel[error_col] ** 2
+    elif metric == "absolute":
+        panel["value"] = panel[error_col].abs()
+    else:
+        raise ValueError(f"metric must be 'squared' or 'absolute', got {metric!r}")
 
     wide = panel.pivot_table(
         index=["YEAR", "QUARTER"],
         columns="ID",
-        values="squared_error",
+        values="value",
     )
     return wide
 
