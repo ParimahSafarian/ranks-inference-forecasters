@@ -123,6 +123,7 @@ def rank_ci_stepwise_pairwise(
     B: int = 5000,
     seed: int | None = None,
     se_method: str = "nw",
+    L: int | None = None,
     winsor_pct: float | None = None,
     verbose: bool = True,
 ) -> dict:
@@ -135,6 +136,8 @@ def rank_ci_stepwise_pairwise(
     ----------
     X          : (n, p) array, may contain NaN.
     se_method  : "nw" for Newey-West HAC, "iid" for plain SE.
+    L          : NW bandwidth. None uses the automatic rule
+                 L = floor(4 * (n/100)^{2/9}). Ignored if se_method="iid".
     winsor_pct : if set (e.g. 95), symmetrically winsorize each pairwise
                  difference series before computing the SE.
     verbose    : print diagnostic summary.
@@ -145,7 +148,7 @@ def rank_ci_stepwise_pairwise(
 
     theta_hat = np.nanmean(X, axis=0)
     delta_hat, se, n_pairs = compute_pairwise(
-        X, se_method=se_method, winsor_pct=winsor_pct,
+        X, se_method=se_method, L=L, winsor_pct=winsor_pct,
     )
 
     if verbose:
@@ -186,12 +189,20 @@ def rank_ci_stepwise_pairwise(
 
 # ── Marginal (per-forecaster) CIs ────────────────────────────────────────────
 
+
+"""
+fix: how se is computed in the bootstrap samples? 
+currently fixed across samples, but should it be 
+recomputed on each bootstrap sample? 
+"""
+
 def rank_ci_marginal_pairwise(
     X: np.ndarray,
     alpha: float = 0.05,
     B: int = 5000,
     seed: int | None = None,
     se_method: str = "nw",
+    L: int | None = None,
     winsor_pct: float | None = None,
 ) -> dict:
     """
@@ -206,6 +217,8 @@ def rank_ci_marginal_pairwise(
     ----------
     X          : (n, p) array, may contain NaN.
     se_method  : "nw" for Newey-West HAC, "iid" for plain SE.
+    L          : NW bandwidth. None uses the automatic rule
+                 L = floor(4 * (n/100)^{2/9}). Ignored if se_method="iid".
     winsor_pct : if set, symmetrically winsorize each pairwise difference
                  series before computing the SE.
 
@@ -219,7 +232,7 @@ def rank_ci_marginal_pairwise(
 
     theta_hat = np.nanmean(X, axis=0)
     delta_hat, se, n_pairs = compute_pairwise(
-        X, se_method=se_method, winsor_pct=winsor_pct,
+        X, se_method=se_method, L=L, winsor_pct=winsor_pct,
     )
 
     rank_ci = np.empty((p, 2), dtype=int)
