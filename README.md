@@ -10,10 +10,13 @@ on point estimates alone.
 
 ## What's here
 
-- `src/rankci/` — installable Python package with three CI methods
-  (simultaneous bootstrap, Gaussian simulation, stepwise bootstrap),
-  pairwise NW-HAC standard errors with optional winsorization, and helpers
-  for loading SPF microdata and Philly Fed RTDSM vintage matrices.
+- `src/rankci/` — installable Python package with simultaneous CI methods
+  (bootstrap, Gaussian simulation, stepwise bootstrap) and **marginal**
+  per-forecaster CIs, pairwise NW-HAC standard errors with optional
+  winsorization, and helpers for loading SPF microdata and Philly Fed
+  RTDSM vintage matrices. The pipeline is parameterized — at runtime you
+  pick the **indicator** ("NGDP", "UNEMP", …), the performance **metric**
+  ("squared" / "absolute"), and the NW bandwidth `L`.
 - `notebooks/`
   - `01_toydataset.ipynb` — synthetic forecasters with known sigmas, used
     to check that the procedure recovers the true ranking.
