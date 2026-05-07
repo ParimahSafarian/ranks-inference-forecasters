@@ -16,6 +16,12 @@ from .data import (
     select_top_forecasters,
     winsorize_panel,
 )
+from .models import (
+    forecast_naive,
+    forecast_ar1,
+    model_forecast_series,
+    model_error_panel,
+)
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
@@ -31,4 +37,8 @@ __all__ = [
     "compute_error_panel",
     "select_top_forecasters",
     "winsorize_panel",
+    "forecast_naive",
+    "forecast_ar1",
+    "model_forecast_series",
+    "model_error_panel",
 ]
