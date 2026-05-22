@@ -58,6 +58,7 @@ def compute_pairwise(
     se_method: str = "nw",
     L: int | None = None,
     winsor_pct: float | None = None,
+    min_overlap: int = 2,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Pairwise mean differences and standard errors, handling NaN (unbalanced panels).
@@ -72,6 +73,7 @@ def compute_pairwise(
     winsor_pct : if set (e.g. 95), symmetrically winsorize each pairwise
                  difference series at (100-pct, pct) percentiles before
                  computing the mean and SE. Only used when se_method="nw".
+    min_overlap: minimum number of shared observations per pair (default 2).
 
     Returns
     -------
@@ -90,11 +92,11 @@ def compute_pairwise(
                 continue
             mask = ~np.isnan(X[:, j]) & ~np.isnan(X[:, k])
             n_jk = mask.sum()
-            if n_jk < 2:
+            n_pairs[j, k] = n_jk
+            if n_jk < max(min_overlap, 2):
                 continue
 
             d = X[mask, j] - X[mask, k]
-            n_pairs[j, k] = n_jk
 
             if se_method == "nw":
                 delta_hat[j, k], se_mat[j, k] = nw_se(d, L, winsor_pct)
@@ -103,6 +105,47 @@ def compute_pairwise(
                 se_mat[j, k] = d.std(ddof=1) / np.sqrt(n_jk)
 
     return delta_hat, se_mat, n_pairs
+
+
+# ── PSD projection and pairwise Cov(theta_hat) ──────────────────────────────
+
+def _nearest_psd(A: np.ndarray) -> np.ndarray:
+    """Project a symmetric matrix to the nearest PSD matrix via eigenvalue clipping."""
+    A = (A + A.T) / 2
+    eigvals, eigvecs = np.linalg.eigh(A)
+    eigvals = np.maximum(eigvals, 0.0)
+    out = eigvecs @ np.diag(eigvals) @ eigvecs.T
+    return (out + out.T) / 2
+
+
+def cov_theta_pairwise(X: np.ndarray, min_overlap: int = 2) -> np.ndarray:
+    """
+    Estimate Cov(theta_hat) entry-by-entry from overlapping observations.
+
+    Diagonal:    Var(theta_hat_j) = Var(X_j) / n_j         (uses all obs of j)
+    Off-diag:    Cov(theta_hat_j, theta_hat_k)
+                 = (n_jk / (n_j * n_k)) * Cov(X_j, X_k | overlap)
+
+    The result is symmetric and projected to the nearest PSD matrix.
+    """
+    p = X.shape[1]
+    Sigma = np.zeros((p, p))
+    for j in range(p):
+        mask_j = np.isfinite(X[:, j])
+        nj = mask_j.sum()
+        if nj < 2:
+            continue
+        Sigma[j, j] = np.var(X[mask_j, j], ddof=1) / nj
+        for k in range(j + 1, p):
+            mask_jk = mask_j & np.isfinite(X[:, k])
+            njk = mask_jk.sum()
+            if njk < min_overlap:
+                continue
+            nk = np.isfinite(X[:, k]).sum()
+            sigma_jk = np.cov(X[mask_jk, j], X[mask_jk, k], ddof=1)[0, 1]
+            Sigma[j, k] = (njk / (nj * nk)) * sigma_jk
+            Sigma[k, j] = Sigma[j, k]
+    return _nearest_psd(Sigma)
 
 
 # ── Rank CIs from pairwise CIs ──────────────────────────────────────────────

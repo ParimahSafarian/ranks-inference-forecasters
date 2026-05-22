@@ -252,17 +252,19 @@ def rank_ci_marginal_pairwise(
         cv_j = _bootstrap_cv_pairwise(X, delta_hat, se, pairs_j, alpha, B, rng)
         cvs[j] = cv_j
 
+        # (j, k): theta_j > theta_k confirmed → k smaller → k BETTER than j
         n_better = sum(
             1 for k in range(p) if k != j
             and not np.isnan(se[j, k])
             and (delta_hat[j, k] - cv_j * se[j, k]) > 0
         )
+        # (k, j): theta_k > theta_j confirmed → k larger → k WORSE than j
         n_worse = sum(
             1 for k in range(p) if k != j
             and not np.isnan(se[k, j])
             and (delta_hat[k, j] - cv_j * se[k, j]) > 0
         )
-        rank_ci[j] = [n_worse + 1, p - n_better]
+        rank_ci[j] = [n_better + 1, p - n_worse]
 
     return {
         "theta_hat": theta_hat,
