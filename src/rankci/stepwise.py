@@ -264,7 +264,7 @@ def rank_ci_marginal_pairwise(
             and not np.isnan(se[k, j])
             and (delta_hat[k, j] - cv_j * se[k, j]) > 0
         )
-        rank_ci[j] = [n_better + 1, p - n_worse]
+        rank_ci[j] = [n_worse + 1, p - n_better]
 
     return {
         "theta_hat": theta_hat,
