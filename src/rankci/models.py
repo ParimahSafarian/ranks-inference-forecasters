@@ -108,6 +108,96 @@ def forecast_ar1(
     raise ValueError(f"transform must be 'levels', 'diff', or 'log_diff', got {transform!r}")
 
 
+def forecast_rw_drift(history: np.ndarray, h: int = 1) -> float:
+    """Random walk with drift: ŷ_{T+h} = y_T + h · mean(Δy)."""
+    y = np.asarray(history, dtype=float)
+    if len(y) < 2:
+        return float("nan")
+    drift = float(np.mean(np.diff(y)))
+    return float(y[-1] + h * drift)
+
+
+def forecast_ma4(history: np.ndarray, h: int = 1) -> float:
+    """Average of the last 4 observations. h is ignored (flat extrapolation)."""
+    y = np.asarray(history, dtype=float)
+    if len(y) < 4:
+        return float("nan")
+    return float(np.mean(y[-4:]))
+
+
+def forecast_historical_mean(history: np.ndarray, h: int = 1) -> float:
+    """Cumulative historical mean. h is ignored."""
+    y = np.asarray(history, dtype=float)
+    if len(y) == 0:
+        return float("nan")
+    return float(np.mean(y))
+
+
+def _fit_ar(y: np.ndarray, p: int) -> tuple[float, list[float]] | None:
+    """OLS fit of y_t = c + Σ_{i=1}^p φ_i y_{t-i}. Returns (c, [φ_1..φ_p]) or None."""
+    n = len(y)
+    if n < p + 2:
+        return None
+    cols = [np.ones(n - p)] + [y[p - j : n - j] for j in range(1, p + 1)]
+    A = np.column_stack(cols)
+    coef, *_ = np.linalg.lstsq(A, y[p:], rcond=None)
+    return float(coef[0]), [float(coef[i]) for i in range(1, p + 1)]
+
+
+def forecast_ar(
+    history: np.ndarray,
+    h: int = 1,
+    lags: int = 1,
+    transform: str = "levels",
+) -> float:
+    """
+    AR(p) forecast iterated h steps ahead.
+
+    Parameters
+    ----------
+    history   : 1-D array of historical values.
+    h         : number of steps ahead from the last observation.
+    lags      : AR order p.
+    transform : "levels", "diff", or "log_diff" (see forecast_ar1).
+    """
+    y = np.asarray(history, dtype=float)
+    if len(y) < lags + 2:
+        return float("nan")
+
+    if transform == "levels":
+        fit = _fit_ar(y, lags)
+        if fit is None:
+            return float("nan")
+        c, phis = fit
+        path = list(y[-lags:])
+        for _ in range(h):
+            next_y = c + sum(phis[i] * path[-(i + 1)] for i in range(lags))
+            path.append(next_y)
+        return float(path[-1])
+
+    if transform == "log_diff":
+        if (y <= 0).any():
+            return float("nan")
+        y = np.log(y)
+
+    if transform in ("diff", "log_diff"):
+        d = np.diff(y)
+        fit = _fit_ar(d, lags)
+        if fit is None:
+            return float("nan")
+        c, phis = fit
+        path = list(d[-lags:])
+        new_d = []
+        for _ in range(h):
+            nxt = c + sum(phis[i] * path[-(i + 1)] for i in range(lags))
+            path.append(nxt)
+            new_d.append(nxt)
+        yhat = y[-1] + sum(new_d)
+        return float(np.exp(yhat) if transform == "log_diff" else yhat)
+
+    raise ValueError(f"transform must be 'levels', 'diff', or 'log_diff', got {transform!r}")
+
+
 # ── Drivers ─────────────────────────────────────────────────────────────────
 
 def model_forecast_series(

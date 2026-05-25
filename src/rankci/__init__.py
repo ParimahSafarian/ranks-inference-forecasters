@@ -27,6 +27,10 @@ from .data import (
 from .models import (
     forecast_naive,
     forecast_ar1,
+    forecast_ar,
+    forecast_rw_drift,
+    forecast_ma4,
+    forecast_historical_mean,
     model_forecast_series,
     model_error_panel,
 )
@@ -52,6 +56,10 @@ __all__ = [
     "winsorize_panel",
     "forecast_naive",
     "forecast_ar1",
+    "forecast_ar",
+    "forecast_rw_drift",
+    "forecast_ma4",
+    "forecast_historical_mean",
     "model_forecast_series",
     "model_error_panel",
 ]
