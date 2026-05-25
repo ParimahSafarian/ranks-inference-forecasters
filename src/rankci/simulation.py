@@ -132,7 +132,9 @@ def rank_confidence_intervals_simulation_pairwise(
     delta_hat, se_pair, n_overlap = compute_pairwise(
         X, se_method=se_method, min_overlap=min_overlap,
     )
-    Sigma_hat = cov_theta_pairwise(X, min_overlap=min_overlap)
+    Sigma_hat = cov_theta_pairwise(
+        X, min_overlap=min_overlap, se_method=se_method, se_pair=se_pair,
+    )
 
     Z = rng.multivariate_normal(np.zeros(p), Sigma_hat, size=B)
 

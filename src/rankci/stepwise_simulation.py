@@ -153,7 +153,9 @@ def rank_ci_stepwise_simulation_pairwise(
     delta_hat, se, n_overlap = compute_pairwise(
         X, se_method=se_method, min_overlap=min_overlap,
     )
-    Sigma_hat = cov_theta_pairwise(X, min_overlap=min_overlap)
+    Sigma_hat = cov_theta_pairwise(
+        X, min_overlap=min_overlap, se_method=se_method, se_pair=se,
+    )
 
     if verbose:
         valid_n = n_overlap[n_overlap > 0]
@@ -229,7 +231,9 @@ def rank_ci_marginal_simulation_pairwise(
     delta_hat, se, n_overlap = compute_pairwise(
         X, se_method=se_method, min_overlap=min_overlap,
     )
-    Sigma_hat = cov_theta_pairwise(X, min_overlap=min_overlap)
+    Sigma_hat = cov_theta_pairwise(
+        X, min_overlap=min_overlap, se_method=se_method, se_pair=se,
+    )
 
     rank_ci = np.empty((p, 2), dtype=int)
     cvs = np.empty(p)

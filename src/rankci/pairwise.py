@@ -118,33 +118,66 @@ def _nearest_psd(A: np.ndarray) -> np.ndarray:
     return (out + out.T) / 2
 
 
-def cov_theta_pairwise(X: np.ndarray, min_overlap: int = 2) -> np.ndarray:
+def cov_theta_pairwise(
+    X: np.ndarray,
+    min_overlap: int = 2,
+    se_method: str = "iid",
+    L: int | None = None,
+    se_pair: np.ndarray | None = None,
+) -> np.ndarray:
     """
-    Estimate Cov(theta_hat) entry-by-entry from overlapping observations.
+    Estimate Cov(theta_hat) consistent with the chosen pairwise SE.
 
-    Diagonal:    Var(theta_hat_j) = Var(X_j) / n_j         (uses all obs of j)
-    Off-diag:    Cov(theta_hat_j, theta_hat_k)
-                 = (n_jk / (n_j * n_k)) * Cov(X_j, X_k | overlap)
+    Built via the Schoenberg / classical-MDS construction: treat
+    `se_pair[j, k]^2` as squared distances and double-center,
 
-    The result is symmetric and projected to the nearest PSD matrix.
+        Sigma_hat = -1/2 * J @ S2 @ J,    J = I - 11^T / p, S2_jk = se_pair[j,k]^2,
+
+    which by construction satisfies
+
+        Var(theta_hat_j - theta_hat_k) = Sigma_jj + Sigma_kk - 2*Sigma_jk
+                                       = se_pair[j, k]^2
+
+    for every pair, while keeping the matrix PSD whenever the SE matrix is
+    Euclidean-embeddable (and otherwise nearest-PSD-projected). This makes
+    the simulation null Z ~ N(0, Sigma_hat) yield pairwise variances that
+    EXACTLY match the studentization denominator — fixing the HAC/IID
+    mismatch that would otherwise inflate simulation critical values.
+
+    Parameters
+    ----------
+    X           : (n, p) data matrix, may contain NaN. Used only to determine p
+                  and to compute se_pair internally when not provided.
+    min_overlap : minimum shared observations per pair (used by internal
+                  compute_pairwise call).
+    se_method   : "iid" or "nw" — used only when se_pair is None.
+    L           : NW bandwidth (None = auto). Used only when se_method="nw"
+                  and se_pair is None.
+    se_pair     : optional (p, p) pre-computed pairwise SE matrix. If None,
+                  computed via `compute_pairwise(X, se_method=se_method,
+                  L=L, min_overlap=min_overlap)`.
+
+    Returns
+    -------
+    Sigma_hat : (p, p) PSD covariance matrix of theta_hat. Rank-deficient by
+                construction (1^T Sigma_hat = 0); only pairwise contrasts are
+                identified, which is all the simulation needs.
     """
     p = X.shape[1]
-    Sigma = np.zeros((p, p))
-    for j in range(p):
-        mask_j = np.isfinite(X[:, j])
-        nj = mask_j.sum()
-        if nj < 2:
-            continue
-        Sigma[j, j] = np.var(X[mask_j, j], ddof=1) / nj
-        for k in range(j + 1, p):
-            mask_jk = mask_j & np.isfinite(X[:, k])
-            njk = mask_jk.sum()
-            if njk < min_overlap:
-                continue
-            nk = np.isfinite(X[:, k]).sum()
-            sigma_jk = np.cov(X[mask_jk, j], X[mask_jk, k], ddof=1)[0, 1]
-            Sigma[j, k] = (njk / (nj * nk)) * sigma_jk
-            Sigma[k, j] = Sigma[j, k]
+
+    if se_pair is None:
+        _, se_pair, _ = compute_pairwise(
+            X, se_method=se_method, L=L, min_overlap=min_overlap,
+        )
+
+    # Squared SE matrix with NaN/diagonal set to 0
+    S2 = np.where(np.isfinite(se_pair), se_pair ** 2, 0.0)
+    np.fill_diagonal(S2, 0.0)
+
+    # Classical MDS / Schoenberg double-centering
+    J = np.eye(p) - np.ones((p, p)) / p
+    Sigma = -0.5 * (J @ S2 @ J)
+
     return _nearest_psd(Sigma)
 
 
