@@ -208,7 +208,7 @@ def rank_ci_from_pairwise_ci(pairwise_ci: np.ndarray, p: int) -> np.ndarray:
                 n_better += 1
             elif ujk < 0:
                 n_worse += 1
-        rank_ci[j] = [n_worse + 1, p - n_better]
+        rank_ci[j] = [n_better + 1, p - n_worse]
     return rank_ci
 
 
@@ -229,5 +229,5 @@ def rank_ci_from_rejections(rejected: set, p: int) -> np.ndarray:
     for j in range(p):
         n_better = sum(1 for k in range(p) if k != j and (j, k) in rejected)
         n_worse  = sum(1 for k in range(p) if k != j and (k, j) in rejected)
-        rank_ci[j] = [n_worse + 1, p - n_better]
+        rank_ci[j] = [n_better + 1, p - n_worse]
     return rank_ci
