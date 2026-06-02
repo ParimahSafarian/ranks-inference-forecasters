@@ -34,6 +34,11 @@ from .models import (
     model_forecast_series,
     model_error_panel,
 )
+from .tau_best import (
+    tau_best_from_rank_ci,
+    tau_best_pairwise,
+    tau_best_simulation_pairwise,
+)
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
@@ -62,11 +67,7 @@ __all__ = [
     "forecast_historical_mean",
     "model_forecast_series",
     "model_error_panel",
+    "tau_best_from_rank_ci",
+    "tau_best_pairwise",
+    "tau_best_simulation_pairwise",
 ]
-
-
-from .tau_best import (
-    tau_best_from_rank_ci,
-    tau_best_pairwise,
-    tau_best_simulation_pairwise,
-)
