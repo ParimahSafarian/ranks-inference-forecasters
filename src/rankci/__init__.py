@@ -63,3 +63,10 @@ __all__ = [
     "model_forecast_series",
     "model_error_panel",
 ]
+
+
+from .tau_best import (
+    tau_best_from_rank_ci,
+    tau_best_pairwise,
+    tau_best_simulation_pairwise,
+)
