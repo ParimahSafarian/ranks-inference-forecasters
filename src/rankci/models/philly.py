@@ -15,7 +15,7 @@ column published in S, restricted to rows ≤ S-1.
 import numpy as np
 import pandas as pd
 
-from .data import HORIZON_OFFSETS, get_advance_estimate
+from ..data.philly import HORIZON_OFFSETS, get_advance_estimate
 
 
 # ── Vintage helpers ──────────────────────────────────────────────────────────

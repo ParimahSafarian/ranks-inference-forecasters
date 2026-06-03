@@ -1,5 +1,7 @@
-data/
-Reports/
+# Top-level data and reports dirs only (the package's `src/rankci/data/`
+# subpackage is source code, not raw data).
+/data/
+/Reports/
 .venv/
 __pycache__/
 *.ipynb_checkpoints
