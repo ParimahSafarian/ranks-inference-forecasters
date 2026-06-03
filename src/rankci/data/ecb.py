@@ -352,3 +352,125 @@ def error_panel(
                           columns="forecaster_id",
                           values="loss",
                           aggfunc="mean")
+
+
+# ── Eurostat realization loader (HICP) ──────────────────────────────────────
+
+_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def load_hicp_realized(path: str | Path) -> pd.Series:
+    """
+    Load the Eurostat HICP monthly year-on-year inflation rate spreadsheet
+    (``prc_hicp_manr...xlsx``) and return a monthly Series for the Euro area.
+
+    The file is shaped: row 8 has the TIME header (``YYYY-MM``), row 10 has
+    the Euro-area values. Eurostat's spreadsheet interleaves a "flag" column
+    after each data column, which we drop.
+
+    Returns
+    -------
+    pd.Series
+        Index is a ``pd.PeriodIndex`` (monthly freq, e.g. ``Period('1997-01',
+        'M')``); values are year-on-year HICP inflation rates in %.
+    """
+    raw = pd.read_excel(path, sheet_name="Sheet 1", header=None)
+    # Locate the TIME row and the Euro-area row by scanning
+    time_idx, ea_idx = None, None
+    for i in range(min(20, len(raw))):
+        head = str(raw.iat[i, 0]).strip()
+        if head == "TIME":
+            time_idx = i
+        if "Euro area" in head and ea_idx is None:
+            ea_idx = i
+    if time_idx is None or ea_idx is None:
+        raise ValueError(
+            "Could not find TIME or Euro-area rows in Eurostat sheet.",
+        )
+
+    dates_raw = raw.iloc[time_idx, 1:].tolist()
+    vals_raw  = raw.iloc[ea_idx,   1:].tolist()
+
+    out = {}
+    for d, v in zip(dates_raw, vals_raw):
+        if pd.isna(d) or pd.isna(v):
+            continue
+        ds = str(d).strip()
+        try:
+            per = pd.Period(ds, freq="M")
+        except (ValueError, pd.errors.OutOfBoundsDatetime):
+            continue
+        try:
+            out[per] = float(v)
+        except (TypeError, ValueError):
+            continue
+
+    s = pd.Series(out, name="hicp_yoy").sort_index()
+    s.index = pd.PeriodIndex(s.index, freq="M")
+    return s
+
+
+def hicp_realized_by_target_period(
+    monthly_yoy: pd.Series,
+    annual_method: str = "mean",
+) -> pd.Series:
+    """
+    Convert a monthly HICP YoY series into a Series keyed by ECB SPF
+    ``TARGET_PERIOD`` strings.
+
+    Three target-period shapes get aligned:
+
+    - ``"YYYY"``      → annual rate. By default the mean of the 12 monthly
+                        YoY rates; pass ``annual_method="dec"`` to use the
+                        rolling rate as of December (i.e. the YoY change
+                        between Dec(YYYY-1) and Dec(YYYY), which under YoY
+                        accounting is the December value of the series).
+    - ``"YYYY<Mon>"`` → the YoY rate of that calendar month.
+    - ``"YYYYQq"``    → the mean of the three monthly YoY rates in that
+                        calendar quarter.
+
+    Parameters
+    ----------
+    monthly_yoy   : output of :func:`load_hicp_realized`.
+    annual_method : ``"mean"`` (default) or ``"dec"``.
+
+    Returns
+    -------
+    pd.Series
+        Index is the ``TARGET_PERIOD`` string. Use as the ``realized`` argument
+        to :func:`error_panel`.
+    """
+    if annual_method not in {"mean", "dec"}:
+        raise ValueError(f"annual_method must be 'mean' or 'dec', got {annual_method!r}")
+
+    out = {}
+    # Yearly aggregates
+    years = sorted({p.year for p in monthly_yoy.index})
+    for y in years:
+        year_mask = (monthly_yoy.index.year == y)
+        year_vals = monthly_yoy[year_mask]
+        if year_vals.empty:
+            continue
+        if annual_method == "mean" and len(year_vals) == 12:
+            out[str(y)] = float(year_vals.mean())
+        elif annual_method == "dec":
+            dec = monthly_yoy.get(pd.Period(f"{y}-12", "M"))
+            if dec is not None and not pd.isna(dec):
+                out[str(y)] = float(dec)
+
+    # Monthly aliases (YYYYMon)
+    for per, val in monthly_yoy.items():
+        mon_abbr = _MONTH_ABBR[per.month - 1]
+        out[f"{per.year}{mon_abbr}"] = float(val)
+
+    # Quarterly aggregates (mean of 3 monthly rates)
+    quarters = sorted({(p.year, ((p.month - 1) // 3) + 1) for p in monthly_yoy.index})
+    for y, q in quarters:
+        q_mask = (monthly_yoy.index.year == y) & \
+                 (((monthly_yoy.index.month - 1) // 3) + 1 == q)
+        q_vals = monthly_yoy[q_mask]
+        if len(q_vals) == 3:
+            out[f"{y}Q{q}"] = float(q_vals.mean())
+
+    return pd.Series(out, name="hicp_realized")
