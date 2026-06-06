@@ -474,3 +474,152 @@ def hicp_realized_by_target_period(
             out[f"{y}Q{q}"] = float(q_vals.mean())
 
     return pd.Series(out, name="hicp_realized")
+
+
+# ── Eurostat realization loader (RGDP) ──────────────────────────────────────
+
+_SDMX_NS = {
+    "m": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message",
+    "g": "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/data/generic",
+}
+
+
+def load_rgdp_index_sdmx(
+    path: str | Path,
+    expected_dims: dict | None = None,
+) -> pd.Series:
+    """
+    Load an SDMX-ML GenericData payload from Eurostat ``namq_10_gdp`` and
+    return the real-GDP volume index as a quarterly Series.
+
+    Parameters
+    ----------
+    path          : path to the SDMX-ML XML file (one Series expected).
+    expected_dims : optional dict of dimension → value to assert on the
+                    Series key. Used as a defensive check that the file
+                    really is the slice we think it is. Pass e.g.
+                    ``{"unit": "CLV_I20", "na_item": "B1GQ",
+                       "s_adj": "SCA", "geo": "EA"}``.
+
+    Returns
+    -------
+    pd.Series
+        Index is ``pd.PeriodIndex`` (quarterly), values are the chain-linked
+        volume index level (base 2020=100 by Eurostat convention).
+    """
+    import xml.etree.ElementTree as ET
+
+    tree = ET.parse(str(path))
+    root = tree.getroot()
+    series_list = root.findall(".//g:Series", _SDMX_NS)
+    if not series_list:
+        raise ValueError(f"No <g:Series> elements found in {path}")
+    if len(series_list) > 1:
+        raise ValueError(
+            f"Expected exactly one Series in {path}, found {len(series_list)}; "
+            f"re-fetch with a tighter dimension path.",
+        )
+    s = series_list[0]
+    key = {v.attrib["id"]: v.attrib["value"]
+           for v in s.find("g:SeriesKey", _SDMX_NS).findall("g:Value", _SDMX_NS)}
+
+    if expected_dims is not None:
+        bad = {k: (expected_dims[k], key.get(k))
+               for k in expected_dims if key.get(k) != expected_dims[k]}
+        if bad:
+            raise ValueError(
+                f"SDMX series-key mismatch (expected vs found): {bad}. "
+                f"Full key: {key}",
+            )
+
+    rows = {}
+    for o in s.findall("g:Obs", _SDMX_NS):
+        t = o.find("g:ObsDimension", _SDMX_NS).attrib["value"]
+        v = o.find("g:ObsValue",     _SDMX_NS).attrib["value"]
+        # Eurostat quarterly format is "YYYY-Qq"
+        try:
+            per = pd.Period(t.replace("-", ""), freq="Q")
+        except (ValueError, pd.errors.OutOfBoundsDatetime):
+            continue
+        try:
+            rows[per] = float(v)
+        except (TypeError, ValueError):
+            continue
+
+    out = pd.Series(rows, name="rgdp_index").sort_index()
+    out.index = pd.PeriodIndex(out.index, freq="Q")
+    return out
+
+
+def rgdp_yoy_from_index(index_series: pd.Series) -> pd.Series:
+    """
+    Convert a quarterly real-GDP volume index into year-on-year growth in %.
+
+    Formula
+    -------
+    y_t = (Index_t / Index_{t-4} - 1) * 100
+
+    Parameters
+    ----------
+    index_series : output of :func:`load_rgdp_index_sdmx` (quarterly).
+
+    Returns
+    -------
+    pd.Series with the same quarterly PeriodIndex (first 4 quarters dropped).
+    """
+    yoy = (index_series / index_series.shift(4) - 1.0) * 100.0
+    yoy.name = "rgdp_yoy"
+    return yoy.dropna()
+
+
+def rgdp_realized_by_target_period(
+    quarterly_yoy: pd.Series,
+    annual_method: str = "mean",
+) -> pd.Series:
+    """
+    Convert a quarterly RGDP YoY series into a Series keyed by ECB SPF
+    ``TARGET_PERIOD`` strings.
+
+    Two target-period shapes are aligned (ECB SPF RGDP block uses only
+    ``YYYY`` and ``YYYYQq`` — no monthly rolling targets):
+
+    - ``"YYYYQq"`` → the YoY rate of that calendar quarter.
+    - ``"YYYY"``   → annual rate. ``annual_method="mean"`` averages the 4
+                     quarterly YoY rates; ``annual_method="q4"`` uses Q4 only.
+
+    Parameters
+    ----------
+    quarterly_yoy : output of :func:`rgdp_yoy_from_index`.
+    annual_method : ``"mean"`` (default) or ``"q4"``.
+
+    Returns
+    -------
+    pd.Series
+        Index is the ``TARGET_PERIOD`` string. Pass directly to
+        :func:`error_panel` as ``realized=``.
+    """
+    if annual_method not in {"mean", "q4"}:
+        raise ValueError(
+            f"annual_method must be 'mean' or 'q4', got {annual_method!r}",
+        )
+
+    out: dict[str, float] = {}
+
+    # Quarterly aliases (YYYYQq)
+    for per, val in quarterly_yoy.items():
+        out[f"{per.year}Q{per.quarter}"] = float(val)
+
+    # Annual aggregates (YYYY)
+    years = sorted({p.year for p in quarterly_yoy.index})
+    for y in years:
+        year_vals = quarterly_yoy[quarterly_yoy.index.year == y]
+        if len(year_vals) != 4:
+            continue
+        if annual_method == "mean":
+            out[str(y)] = float(year_vals.mean())
+        else:  # "q4"
+            q4 = quarterly_yoy.get(pd.Period(f"{y}Q4", "Q"))
+            if q4 is not None and not pd.isna(q4):
+                out[str(y)] = float(q4)
+
+    return pd.Series(out, name="rgdp_realized")
