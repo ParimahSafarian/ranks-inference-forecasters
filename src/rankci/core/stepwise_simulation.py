@@ -18,6 +18,7 @@ from .pairwise import (
     cov_theta_pairwise,
     rank_ci_from_rejections,
 )
+from .covariance import studentized_null_draws, stepdown_rank_ci
 
 
 # ─── Shared simulation critical value ────────────────────────────────────────
@@ -119,42 +120,44 @@ def rank_ci_stepwise_simulation_pairwise(
     alpha: float = 0.05,
     B: int = 20000,
     seed: int | None = None,
-    use_hac: bool = False,
+    covariance: str = "mds",
     min_overlap: int = 2,
+    winsor_pct: float | None = None,
     verbose: bool = True,
 ) -> dict:
     """
-    Stepwise rank CIs for unbalanced panels — simulation-based.
+    Stepwise (Romano--Wolf) rank CIs for unbalanced panels — simulation-based.
 
-    Replaces the bootstrap resampling in rank_ci_stepwise_pairwise with
-    draws from N(0, Sigma_hat), where Sigma_hat is estimated pairwise
-    and projected to PSD.
+    The covariance-construction step is swappable via ``covariance``:
+      * "mds"   — Approach 1: p x p level covariance via classical MDS, draw
+                  Z ~ N(0, Sigma) and difference.
+      * "omega" — Approach 2: q x q direct difference covariance, draw
+                  D ~ N(0, Omega) directly.
+    Both feed the *same* studentized-draw stepdown (see
+    :mod:`rankci.core.covariance`); the null draws are taken once and the active
+    set is restricted each round. HAC SEs use the Bartlett kernel with the
+    Andrews plug-in bandwidth throughout.
 
     Parameters
     ----------
     X           : (n, p) array, may contain NaN.
     alpha       : miscoverage level (default 0.05).
-    B           : simulation draws per stepwise iteration.
+    B           : simulation draws (drawn once, reused across stepdown rounds).
     seed        : random seed.
-    use_hac     : if True, use Newey-West HAC SEs; else IID.
+    covariance  : "mds" or "omega".
     min_overlap : minimum shared observations per pair.
+    winsor_pct  : optional winsorization for the NW-HAC SEs.
     verbose     : print diagnostic summary.
 
     Returns
     -------
-    dict with: theta_hat, rank_ci, Sigma_hat, n_overlap.
+    dict with: theta_hat, rank_ci, cov, n_overlap, rejected, n_steps.
     """
-    rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
     n, p = X.shape
 
-    theta_hat = np.nanmean(X, axis=0)
-    se_method = "nw" if use_hac else "iid"
     delta_hat, se, n_overlap = compute_pairwise(
-        X, se_method=se_method, min_overlap=min_overlap,
-    )
-    Sigma_hat = cov_theta_pairwise(
-        X, min_overlap=min_overlap, se_method=se_method, se_pair=se,
+        X, se_method="nw", winsor_pct=winsor_pct, min_overlap=min_overlap,
     )
 
     if verbose:
@@ -164,38 +167,21 @@ def rank_ci_stepwise_simulation_pairwise(
         with np.errstate(invalid="ignore"):
             t_stats = delta_hat / se
         vals = t_stats[np.isfinite(t_stats)]
-        print(f"  Max t-stat: {vals.max():.3f}")
+        print(f"  Max t-stat: {vals.max():.3f}  (covariance={covariance})")
 
-    active = {
-        (j, k) for j in range(p) for k in range(p)
-        if j != k and np.isfinite(se[j, k])
-    }
-    rejected = set()
-    step = 0
-
-    while active:
-        step += 1
-        cv = _simulation_cv(Sigma_hat, se, list(active), alpha, B, rng)
-        new_rejections = {
-            (j, k) for (j, k) in active
-            if np.isfinite(delta_hat[j, k])
-            and delta_hat[j, k] - cv * se[j, k] > 0
-        }
-        if verbose and new_rejections:
-            print(f"  Step {step}: cv = {cv:.3f}, rejected {len(new_rejections)} pairs")
-
-        if not new_rejections:
-            if verbose:
-                print(f"  Step {step}: cv = {cv:.3f}, no rejections — done.")
-            break
-        rejected |= new_rejections
-        active -= new_rejections
+    draws = studentized_null_draws(
+        X, method=covariance, B=B, seed=seed,
+        min_overlap=min_overlap, winsor_pct=winsor_pct,
+    )
+    out = stepdown_rank_ci(draws, p, alpha=alpha, verbose=verbose)
 
     return {
-        "theta_hat": theta_hat,
-        "rank_ci": rank_ci_from_rejections(rejected, p),
-        "Sigma_hat": Sigma_hat,
+        "theta_hat": draws["theta_hat"],
+        "rank_ci": out["rank_ci"],
+        "cov": draws["cov"],
         "n_overlap": n_overlap,
+        "rejected": out["rejected"],
+        "n_steps": out["n_steps"],
     }
 
 

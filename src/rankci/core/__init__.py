@@ -19,6 +19,9 @@ from .stepwise_simulation import (
     rank_ci_marginal_simulation_pairwise,
 )
 from .pairwise import compute_pairwise, nw_se, cov_theta_pairwise
+from .bandwidth import andrews_bandwidth, andrews_alpha1, ar1_coefficient
+from .omega import cov_via_omega, pair_index, stacked_nw_balanced
+from .covariance import studentized_null_draws, stepdown_rank_ci
 from .tau_best import (
     tau_best_from_rank_ci,
     tau_best_pairwise,
@@ -38,6 +41,14 @@ __all__ = [
     "compute_pairwise",
     "nw_se",
     "cov_theta_pairwise",
+    "andrews_bandwidth",
+    "andrews_alpha1",
+    "ar1_coefficient",
+    "cov_via_omega",
+    "pair_index",
+    "stacked_nw_balanced",
+    "studentized_null_draws",
+    "stepdown_rank_ci",
     "tau_best_from_rank_ci",
     "tau_best_pairwise",
     "tau_best_simulation_pairwise",
