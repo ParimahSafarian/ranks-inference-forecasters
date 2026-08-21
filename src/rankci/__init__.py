@@ -44,6 +44,7 @@ from .core import (  # noqa: F401
     tau_best_simulation_pairwise,
 )
 from .data import select_top_forecasters, winsorize_panel  # noqa: F401
+from .sim import simulate_panel, true_ranks, coverage_study  # noqa: F401
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
@@ -71,4 +72,7 @@ __all__ = [
     "tau_best_simulation_pairwise",
     "select_top_forecasters",
     "winsorize_panel",
+    "simulate_panel",
+    "true_ranks",
+    "coverage_study",
 ]

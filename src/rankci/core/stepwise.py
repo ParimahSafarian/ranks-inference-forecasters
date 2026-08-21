@@ -184,6 +184,7 @@ def rank_ci_stepwise_pairwise(
         "theta_hat": theta_hat,
         "rank_ci": rank_ci_from_rejections(rejected, p),
         "n_pairs": n_pairs,
+        "rejected": rejected,
     }
 
 

@@ -182,6 +182,8 @@ def rank_ci_stepwise_simulation_pairwise(
         "n_overlap": n_overlap,
         "rejected": out["rejected"],
         "n_steps": out["n_steps"],
+        "proj_gap": draws["proj_gap"],
+        "min_eig_raw": draws["min_eig_raw"],
     }
 
 

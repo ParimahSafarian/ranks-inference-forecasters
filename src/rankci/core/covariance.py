@@ -74,13 +74,17 @@ def studentized_null_draws(
     delta_q = np.array([delta_mat[j, k] for (j, k) in pairs])
 
     if method == "mds":
-        cov = cov_theta_pairwise(X, min_overlap=min_overlap,
-                                 se_method="nw", se_pair=se_mat)     # p x p
+        cov, cov_diag = cov_theta_pairwise(
+            X, min_overlap=min_overlap, se_method="nw", se_pair=se_mat,
+            return_diagnostics=True,                                 # p x p
+        )
         se_q = np.array([se_mat[j, k] for (j, k) in pairs])
         Z = rng.multivariate_normal(np.zeros(p), cov, size=B)        # (B, p)
         D = np.column_stack([Z[:, j] - Z[:, k] for (j, k) in pairs])  # (B, q)
     else:  # omega
-        cov = cov_via_omega(X, min_overlap=min_overlap)             # q x q
+        cov, cov_diag = cov_via_omega(
+            X, min_overlap=min_overlap, return_diagnostics=True,     # q x q
+        )
         se_q = np.sqrt(np.clip(np.diag(cov), 0.0, None))
         D = rng.multivariate_normal(np.zeros(q), cov, size=B)        # (B, q)
 
@@ -96,6 +100,8 @@ def studentized_null_draws(
         "T_draws": T,
         "cov": cov,
         "method": method,
+        "proj_gap": cov_diag["frob_gap"],
+        "min_eig_raw": cov_diag["min_eig_raw"],
     }
 
 
