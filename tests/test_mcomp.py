@@ -1,10 +1,16 @@
-"""Tests for the M-competition method panel (Step 4, sharp application)."""
+"""Tests for the M-competition panels: our own method panel and the official M3
+submissions (Paris temperature, the thesis application)."""
+import os
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from rankci.data.mcomp import (
     smape, mase, m_naive, m_snaive, m_naive2, m_ets, m_theta,
     build_panel, HORIZON, SEASON,
+    load_m3_official, official_panel_from_long,
 )
 
 
@@ -84,6 +90,51 @@ def test_build_panel_no_comb():
     df = _synth_df(n_series=3, group="Quarterly")
     panel = build_panel(df, "Quarterly", methods=["naive", "snaive"], include_comb=False)
     assert list(panel.columns) == ["naive", "snaive"]
+
+
+# ── official M3 submissions (thesis application: Paris temperature) ──────────
+
+FIXTURE = Path(__file__).parent / "fixtures" / "m3_paris_official.csv"
+PARIS = "Average temperature in Paris"
+
+
+def test_official_panel_paris_shape_and_order():
+    long = pd.read_csv(FIXTURE)
+    P = official_panel_from_long(long, PARIS)
+    assert P.shape == (306, 24)                    # 17 blocks x 18 months, 24 methods
+    series = P.index.get_level_values("series")
+    assert series[0] == "N2784" and series[-1] == "N2800"   # calendar order kept
+    assert list(P.index.get_level_values("horizon")[:18]) == list(range(1, 19))
+    assert (P.values >= 0).all() and np.isfinite(P.values).all()
+
+
+def test_official_panel_paris_known_smapes():
+    # mean sMAPEs quoted in the thesis (Table tab:mcomp)
+    theta = official_panel_from_long(pd.read_csv(FIXTURE), PARIS).mean()
+    assert np.isclose(theta["B-J auto"], 10.10, atol=0.005)
+    assert np.isclose(theta["THETA"], 10.50, atol=0.005)
+    assert np.isclose(theta["Flors-Pearc1"], 37.80, atol=0.005)
+
+
+def test_official_panel_drops_incomplete_methods():
+    long = pd.read_csv(FIXTURE)
+    long.loc[long.index[0], "AAM1"] = np.nan
+    assert "AAM1" not in official_panel_from_long(long, PARIS).columns
+
+
+def test_official_panel_unknown_description():
+    with pytest.raises(ValueError):
+        official_panel_from_long(pd.read_csv(FIXTURE), "no such series")
+
+
+@pytest.mark.skipif(not os.environ.get("RANKCI_NETWORK"),
+                    reason="downloads Mcomp from CRAN; set RANKCI_NETWORK=1")
+def test_load_m3_official_from_cran(tmp_path):
+    df = load_m3_official(directory=str(tmp_path))
+    assert df.shape == (37014, 30) and df["series"].nunique() == 3003
+    fixture = pd.read_csv(FIXTURE)
+    paris = df[df["description"] == PARIS].reset_index(drop=True)
+    pd.testing.assert_frame_equal(paris, fixture, check_dtype=False)
 
 
 if __name__ == "__main__":
