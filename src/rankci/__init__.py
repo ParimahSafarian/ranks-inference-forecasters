@@ -20,6 +20,8 @@ keeps source-of-truth obvious in the notebooks.
 # Re-export source-agnostic engines and shared panel helpers
 from .core import (  # noqa: F401
     rank_confidence_intervals_bootstrap,
+    default_block_length,
+    mbb_indices,
     rank_confidence_intervals_simulation,
     rank_confidence_intervals_simulation_pairwise,
     rank_ci_stepwise,
@@ -48,6 +50,8 @@ from .sim import simulate_panel, true_ranks, coverage_study  # noqa: F401
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
+    "default_block_length",
+    "mbb_indices",
     "rank_confidence_intervals_simulation",
     "rank_confidence_intervals_simulation_pairwise",
     "rank_ci_stepwise",

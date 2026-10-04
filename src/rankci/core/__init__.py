@@ -4,6 +4,7 @@ These modules operate on a plain (n, p) numpy panel and do not know where the
 data came from.
 """
 from .bootstrap import rank_confidence_intervals_bootstrap
+from .block_bootstrap import default_block_length, mbb_indices
 from .simulation import (
     rank_confidence_intervals_simulation,
     rank_confidence_intervals_simulation_pairwise,
@@ -30,6 +31,8 @@ from .tau_best import (
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
+    "default_block_length",
+    "mbb_indices",
     "rank_confidence_intervals_simulation",
     "rank_confidence_intervals_simulation_pairwise",
     "rank_ci_stepwise",
