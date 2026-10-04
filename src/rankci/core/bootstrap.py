@@ -2,10 +2,12 @@
 Simultaneous bootstrap rank confidence intervals.
 
 Complete-cases version: requires a fully observed (n, p) matrix.
-Uses IID standard errors (no HAC).
+Uses IID standard errors (no HAC); the critical value comes from a joint
+moving block bootstrap of whole time rows (see :mod:`rankci.core.block_bootstrap`).
 """
 import numpy as np
 
+from .block_bootstrap import default_block_length, mbb_indices
 from .pairwise import rank_ci_from_pairwise_ci
 
 
@@ -14,16 +16,23 @@ def rank_confidence_intervals_bootstrap(
     alpha: float = 0.05,
     B: int = 2000,
     seed: int | None = None,
+    block_length: int | None = None,
 ) -> dict:
     """
     Bootstrap rank CIs — simultaneous two-sided CIs for all pairwise differences.
 
-    Rows are i.i.d. joint observations; columns are populations.
-    Resamples whole rows to preserve cross-column dependence.
+    Rows are time periods; columns are populations. Resamples whole rows in
+    contiguous moving blocks (joint MBB), preserving both the cross-column
+    dependence and the serial dependence of the panel.
+
+    Parameters
+    ----------
+    block_length : MBB block length. None uses the automatic rule
+                   ``default_block_length(X)`` (Andrews bandwidth + 1).
 
     Returns
     -------
-    dict with keys: theta_hat, pairwise_ci, rank_ci, critical_value.
+    dict with keys: theta_hat, pairwise_ci, rank_ci, critical_value, block_length.
     """
     rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
@@ -41,12 +50,15 @@ def rank_confidence_intervals_bootstrap(
     se = D.std(axis=0, ddof=1) / np.sqrt(n)
     np.fill_diagonal(se, np.nan)
 
+    if block_length is None:
+        block_length = default_block_length(X)
+
     # Bootstrap max statistics
     T_boot = np.empty(B)
     off_diag = ~np.eye(p, dtype=bool)
 
     for b in range(B):
-        idx = rng.integers(0, n, size=n)
+        idx = mbb_indices(n, block_length, rng)
         Xb = X[idx]
 
         theta_b = Xb.mean(axis=0)
@@ -72,4 +84,5 @@ def rank_confidence_intervals_bootstrap(
         "pairwise_ci": pairwise_ci,
         "rank_ci": rank_ci,
         "critical_value": critical_value,
+        "block_length": int(block_length),
     }
