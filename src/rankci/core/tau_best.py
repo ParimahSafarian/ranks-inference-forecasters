@@ -6,7 +6,7 @@ J^{τ-best}_n that contains ALL truly top-τ populations with probability ≥ 1 
 
 Three entry points:
   - tau_best_from_rank_ci :           naive projection from joint rank CIs (eq. 27)
-  - tau_best_pairwise :               bootstrap, unbalanced panel (Algorithm 3.3)
+  - tau_best_pairwise :               joint moving block bootstrap, unbalanced panel (Algorithm 3.3)
   - tau_best_simulation_pairwise :    simulation variant of Algorithm 3.3
 
 Rank convention (matching the rest of rankci):
@@ -27,6 +27,7 @@ from itertools import combinations
 
 import numpy as np
 
+from .block_bootstrap import default_block_length, mbb_indices, pairwise_means
 from .pairwise import compute_pairwise, cov_theta_pairwise
 
 
@@ -41,7 +42,13 @@ def tau_best_from_rank_ci(
     """
     Naive τ-best set by projecting from simultaneous rank CIs.
 
-    J^{τ-best}_n = {j : τ ∈ R^{joint}_{n,j}}.
+    J^{τ-best}_n = {j : L_j ≤ τ},   where R^{joint}_{n,j} = [L_j, U_j].
+
+    On the event that every R^{joint}_{n,j} covers the true rank r_j, each
+    truly top-τ population (r_j ≤ τ) has L_j ≤ r_j ≤ τ, so the set inherits
+    the joint coverage.  Units with U_j < τ are certainly top-τ and must be
+    kept: the rule {j : τ ∈ R^{joint}_{n,j}}, as eq. 27 is printed, drops
+    them and loses coverage for τ ≥ 2 (for τ = 1 the two rules coincide).
 
     Parameters
     ----------
@@ -52,11 +59,11 @@ def tau_best_from_rank_ci(
     -------
     1-D boolean array of length p.  True = included in the τ-best set.
     """
-    return (rank_ci[:, 0] <= tau) & (tau <= rank_ci[:, 1])
+    return rank_ci[:, 0] <= tau
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2.  Direct bootstrap τ-best  (Algorithm 3.3, pairwise resampling)
+# 2.  Direct bootstrap τ-best  (Algorithm 3.3, joint moving block bootstrap)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _test_stat_j(j: int, delta_hat: np.ndarray, se: np.ndarray,
@@ -93,19 +100,22 @@ def _bootstrap_cv_tau_best(
     alpha: float,
     B: int,
     rng: np.random.Generator,
+    block_length: int,
 ) -> float:
     """
-    Bootstrap critical value for Algorithm 3.3 (pairwise resampling).
+    Bootstrap critical value for Algorithm 3.3 (joint moving block bootstrap).
 
     ĉ_n(1−α, I) = max_{K ∈ K}  Quantile_{1−α}({T*_{b,I,K}})
 
     where T*_{b,I,K} = max_{j ∈ I}  max_{k ∈ J\\K}
                        (d̄*_{b,j,k} − Δ̂_{j,k}) / se_{j,k}
 
-    The bootstrap resamples each pair (j,k) independently from its
-    overlap set, keeping se fixed at the original estimate.
+    In each replication one set of row indices is drawn for the whole panel
+    (contiguous blocks of ``block_length`` rows), and every pair's difference
+    mean d̄*_{b,j,k} is computed on the rows of that resample where both j and
+    k are observed. se stays fixed at the original estimate.
     """
-    p = X.shape[1]
+    n, p = X.shape
 
     # ── Collect all pairs we might need ──────────────────────────────────
     I_s = set(I_set)
@@ -121,29 +131,27 @@ def _bootstrap_cv_tau_best(
             if np.isfinite(se[j, k]) and se[j, k] > 0:
                 needed_pairs.add((j, k))
 
-    # ── Pre-compute overlap data for each needed pair ────────────────────
-    pair_data = {}
-    for j, k in needed_pairs:
-        mask = ~np.isnan(X[:, j]) & ~np.isnan(X[:, k])
-        n_jk = mask.sum()
-        if n_jk < 2:
-            continue
-        pair_data[(j, k)] = X[mask][:, [j, k]]  # shape (n_jk, 2)
+    # ── Pre-compute centering/scaling for each needed pair ───────────────
+    pairs = sorted(
+        (j, k) for (j, k) in needed_pairs
+        if (~np.isnan(X[:, j]) & ~np.isnan(X[:, k])).sum() >= 2
+    )
+    pairs_arr = np.asarray(pairs, dtype=int).reshape(-1, 2)
+    center = delta_hat[pairs_arr[:, 0], pairs_arr[:, 1]]
+    scale  = se[pairs_arr[:, 0], pairs_arr[:, 1]]
 
     # ── Bootstrap loop ───────────────────────────────────────────────────
-    # For each b, compute the centered bootstrap stat for all needed pairs,
-    # then for each K compute T*_{b,I,K}.
+    # For each b, draw ONE joint block resample of rows, compute the centered
+    # bootstrap stat for all needed pairs, then for each K compute T*_{b,I,K}.
     n_K = len(K_sets)
     T_K = np.full((B, n_K), -np.inf)
 
     for b in range(B):
-        # Resample each pair independently
-        boot_stat = {}
-        for (j, k), Xpair in pair_data.items():
-            n_jk = Xpair.shape[0]
-            idx = rng.integers(0, n_jk, size=n_jk)
-            d_bar_b = (Xpair[idx, 0] - Xpair[idx, 1]).mean()
-            boot_stat[(j, k)] = (d_bar_b - delta_hat[j, k]) / se[j, k]
+        idx = mbb_indices(n, block_length, rng)
+        stats = (pairwise_means(X[idx], pairs_arr) - center) / scale
+        boot_stat = {
+            pair: float(s_) for pair, s_ in zip(pairs, stats) if np.isfinite(s_)
+        }
 
         for ki, K in enumerate(K_sets):
             K_set = set(K)
@@ -172,11 +180,13 @@ def tau_best_pairwise(
     L: int | None = None,
     winsor_pct: float | None = None,
     verbose: bool = True,
+    block_length: int | None = None,
 ) -> dict:
     """
     Confidence set for the τ-best populations (Algorithm 3.3).
 
-    Bootstrap variant with pairwise resampling for unbalanced panels.
+    Bootstrap variant for unbalanced panels; critical values come from a
+    joint moving block bootstrap of whole time rows.
 
     Parameters
     ----------
@@ -190,6 +200,8 @@ def tau_best_pairwise(
     L          : NW bandwidth (None = automatic rule).
     winsor_pct : if set, symmetrically winsorize pairwise differences.
     verbose    : print diagnostic information.
+    block_length : MBB block length. None uses ``default_block_length(X, L)``
+                 (= L + 1 if L is given, else median Andrews bandwidth + 1).
 
     Returns
     -------
@@ -200,6 +212,7 @@ def tau_best_pairwise(
         test_stats   : (p,) test statistic T_{n,j} for each j.
         rejected     : 1-D boolean array, True = rejected (excluded).
         n_in_set     : number of populations in the confidence set.
+        block_length : MBB block length used.
     """
     rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
@@ -212,6 +225,8 @@ def tau_best_pairwise(
     delta_hat, se, n_pairs = compute_pairwise(
         X, se_method=se_method, L=L, winsor_pct=winsor_pct,
     )
+    if block_length is None:
+        block_length = default_block_length(X, L=L)
 
     # ── Enumerate K = {K ⊂ J : |K| = τ−1} ──────────────────────────────
     if tau == 1:
@@ -226,6 +241,7 @@ def tau_best_pairwise(
         valid = n_pairs[n_pairs > 0]
         print(f"  Pairwise overlaps: min={valid.min()}, "
               f"mean={valid.mean():.1f}, max={valid.max()}")
+        print(f"  MBB block length: {block_length}")
 
     # ── Compute test statistics T_{n,j} for all j ───────────────────────
     T_n = np.full(p, np.nan)
@@ -244,7 +260,7 @@ def tau_best_pairwise(
     while I_set:
         step += 1
         cv = _bootstrap_cv_tau_best(
-            X, delta_hat, se, I_set, K_sets, alpha, B, rng,
+            X, delta_hat, se, I_set, K_sets, alpha, B, rng, block_length,
         )
 
         new_rejections = [j for j in I_set if T_n[j] > cv]
@@ -272,6 +288,7 @@ def tau_best_pairwise(
         "test_stats": T_n,
         "rejected": rejected,
         "n_in_set": int(tau_best_set.sum()),
+        "block_length": int(block_length),
     }
 
 
