@@ -115,8 +115,10 @@ def stepdown_rank_ci(
 ) -> dict:
     """
     Romano--Wolf stepdown on the studentized draws produced by
-    :func:`studentized_null_draws`. Draws once; restricts the active set each
-    round. Identical for the MDS and Omega paths.
+    :func:`studentized_null_draws` (or by the block bootstrap,
+    :func:`rankci.core.block_bootstrap.block_bootstrap_draws`). Draws once;
+    restricts the active set each round. Identical for the MDS, Omega and
+    block-bootstrap paths.
 
     For an ordered pair (u, v) mapping to unordered column a with sign s
     (s = +1 if u < v, else -1):
@@ -145,12 +147,17 @@ def stepdown_rank_ci(
     active = set(oriented.keys())
     rejected: set[tuple[int, int]] = set()
     step = 0
+    cvs = []
 
     while active:
         step += 1
         signed_cols = np.column_stack([oriented[uv][3] for uv in active])  # (B, |active|)
+        # A NaN draw (a bootstrap resample in which the pair has no overlap) does
+        # not enter the maximum; the Gaussian draws have no NaN in valid columns.
+        signed_cols = np.where(np.isnan(signed_cols), -np.inf, signed_cols)
         row_max = signed_cols.max(axis=1)
         cv = float(np.quantile(row_max, 1 - alpha))
+        cvs.append(cv)
 
         new_rej = {uv for uv in active if oriented[uv][2] > cv}
         if verbose:
@@ -165,4 +172,5 @@ def stepdown_rank_ci(
         "rank_ci": rank_ci_from_rejections(rejected, p),
         "rejected": rejected,
         "n_steps": step,
+        "critical_values": cvs,
     }

@@ -3,7 +3,7 @@ Simultaneous bootstrap rank confidence intervals.
 
 Complete-cases version: requires a fully observed (n, p) matrix.
 Uses IID standard errors (no HAC); the critical value comes from a joint
-moving block bootstrap of whole time rows (see :mod:`rankci.core.block_bootstrap`).
+circular block bootstrap of whole time rows (see :mod:`rankci.core.block_bootstrap`).
 """
 import numpy as np
 
@@ -22,12 +22,12 @@ def rank_confidence_intervals_bootstrap(
     Bootstrap rank CIs — simultaneous two-sided CIs for all pairwise differences.
 
     Rows are time periods; columns are populations. Resamples whole rows in
-    contiguous moving blocks (joint MBB), preserving both the cross-column
-    dependence and the serial dependence of the panel.
+    contiguous circular blocks (joint block bootstrap), preserving both the
+    cross-column dependence and the serial dependence of the panel.
 
     Parameters
     ----------
-    block_length : MBB block length. None uses the automatic rule
+    block_length : block length. None uses the automatic rule
                    ``default_block_length(X)`` (Andrews bandwidth + 1).
 
     Returns

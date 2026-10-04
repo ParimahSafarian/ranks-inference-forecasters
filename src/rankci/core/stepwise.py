@@ -5,17 +5,37 @@ Two variants:
   - rank_ci_stepwise:          complete-cases, IID SE
   - rank_ci_stepwise_pairwise: unbalanced panel, NW-HAC SE
 
-Both draw their critical values from a joint moving block bootstrap of whole
+Both draw their critical values from a joint circular block bootstrap of whole
 time rows (see :mod:`rankci.core.block_bootstrap`), which preserves the serial
-and cross-sectional dependence of the panel.
+and cross-sectional dependence of the panel. The B resamples are drawn once and
+the Romano--Wolf stepdown of :func:`rankci.core.covariance.stepdown_rank_ci`
+restricts them to the active pairs in every round, as on the simulation route.
 """
 import numpy as np
 
-from .block_bootstrap import default_block_length, mbb_indices, pairwise_means
-from .pairwise import (
-    compute_pairwise,
-    rank_ci_from_rejections,
-)
+from .block_bootstrap import block_bootstrap_draws, default_block_length, mbb_indices
+from .covariance import stepdown_rank_ci
+from .pairwise import compute_pairwise
+
+
+def _pair_index(p: int):
+    """Unordered pairs (j, k), j < k, and the map (j, k) -> column."""
+    pairs = [(j, k) for j in range(p) for k in range(j + 1, p)]
+    return pairs, {pr: a for a, pr in enumerate(pairs)}
+
+
+def _signed_column(T: np.ndarray, col: dict, u: int, v: int) -> np.ndarray:
+    """Draws for the ordered hypothesis (u, v) from the unordered-pair columns."""
+    return T[:, col[(u, v)]] if u < v else -T[:, col[(v, u)]]
+
+
+def _max_quantile(columns: list, alpha: float) -> float:
+    """(1 - alpha) quantile of the row-wise maximum; NaN draws do not enter it."""
+    if not columns:
+        return float("inf")
+    M = np.column_stack(columns)
+    M = np.where(np.isnan(M), -np.inf, M)
+    return float(np.quantile(M.max(axis=1), 1 - alpha))
 
 
 # ── Complete-cases stepwise ──────────────────────────────────────────────────
@@ -35,37 +55,34 @@ def _compute_se_complete(X: np.ndarray) -> np.ndarray:
 
 
 
-def _bootstrap_cv_complete(X, theta_hat, active_pairs, alpha, B, rng,
-                           block_length):
-    """One-sided bootstrap critical value — complete-cases.
-    
+def _bootstrap_draws_complete(X, theta_hat, pairs, B, rng, block_length):
+    """Fully studentized bootstrap draws — complete-cases.
+
     Implements the fully studentized bootstrap of Mogstad et al. (2024) eq. (6)
-    with P replaced by the moving-block-bootstrap distribution: in each
-    replication b, whole time rows are resampled in contiguous blocks of length
+    with P replaced by the block-bootstrap distribution: in each replication b,
+    whole time rows are resampled in circular blocks of length
     ``block_length`` (joint across columns), and both the pairwise mean
     differences AND the pairwise standard errors are recomputed on the
-    resampled data.
-    
-    The bootstrap test statistic for pair (k, l) in replication b is
-    
-        T*_{b, k, l} = ((theta*_b[k] - theta*_b[l]) - (theta_hat[k] - theta_hat[l]))
-                       / se*_b[k, l]
-    
-    and T_b = max over active pairs of T*_{b, k, l}. The critical value is the
-    (1 - alpha) empirical quantile of {T_b}_{b=1}^B.
+    resampled data. For unordered pair a = (k, l), k < l,
+
+        T*[b, a] = ((theta*_b[k] - theta*_b[l]) - (theta_hat[k] - theta_hat[l]))
+                   / se*_b[k, l],
+
+    and the reverse orientation (l, k) is -T*[b, a]. Returns the (B, q) array.
     """
     n = X.shape[0]
-    T = np.empty(B)
-    for b in range(B):
-        idx     = mbb_indices(n, block_length, rng)
-        Xb      = X[idx]
-        theta_b = Xb.mean(axis=0)
-        se_b    = _compute_se_complete(Xb)   # recomputed on the bootstrap sample
-        T[b] = max(
-            ((theta_b[k] - theta_b[l]) - (theta_hat[k] - theta_hat[l])) / se_b[k, l]
-            for k, l in active_pairs
-        )
-    return float(np.quantile(T, 1 - alpha))
+    J = np.array([k for k, _ in pairs])
+    K = np.array([l for _, l in pairs])
+    center = theta_hat[J] - theta_hat[K]
+    T = np.empty((B, len(pairs)))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        for b in range(B):
+            idx     = mbb_indices(n, block_length, rng)
+            Xb      = X[idx]
+            theta_b = Xb.mean(axis=0)
+            se_b    = _compute_se_complete(Xb)   # recomputed on the bootstrap sample
+            T[b] = ((theta_b[J] - theta_b[K]) - center) / se_b[J, K]
+    return T
 
 
 def rank_ci_stepwise(
@@ -77,7 +94,7 @@ def rank_ci_stepwise(
 ) -> dict:
     """Stepwise rank CIs — complete cases, IID standard errors.
 
-    block_length : MBB block length. None uses ``default_block_length(X)``.
+    block_length : block length. None uses ``default_block_length(X)``.
     """
     rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
@@ -85,62 +102,46 @@ def rank_ci_stepwise(
 
     theta_hat = X.mean(axis=0)
     se = _compute_se_complete(X)
-    delta_hat = theta_hat[:, None] - theta_hat[None, :]
 
     if block_length is None:
         block_length = default_block_length(X)
 
-    active = {(k, l) for k in range(p) for l in range(p) if k != l}
-    rejected = set()
-
-    while active:
-        cv = _bootstrap_cv_complete(X, theta_hat, list(active), alpha, B, rng,
-                                    block_length)
-        new_rejections = {
-            (k, l) for (k, l) in active
-            if delta_hat[k, l] - cv * se[k, l] > 0
-        }
-        if not new_rejections:
-            break
-        rejected |= new_rejections
-        active -= new_rejections
+    pairs, _ = _pair_index(p)
+    draws = {
+        "pairs": pairs,
+        "delta_q": np.array([theta_hat[k] - theta_hat[l] for k, l in pairs]),
+        "se_q": np.array([se[k, l] for k, l in pairs]),
+        "T_draws": _bootstrap_draws_complete(X, theta_hat, pairs, B, rng, block_length),
+    }
+    out = stepdown_rank_ci(draws, p, alpha=alpha)
 
     return {
         "theta_hat": theta_hat,
-        "rank_ci": rank_ci_from_rejections(rejected, p),
+        "rank_ci": out["rank_ci"],
+        "rejected": out["rejected"],
+        "n_steps": out["n_steps"],
         "block_length": int(block_length),
     }
 
 
 # ── Pairwise stepwise (unbalanced panel, NW-HAC) ────────────────────────────
 
-def _bootstrap_cv_pairwise(X, delta_hat, se, active_pairs, alpha, B, rng,
-                           block_length):
-    """Joint moving-block-bootstrap critical value for unbalanced panels.
+def _bootstrap_draws_pairwise(X, delta_hat, se, pairs, B, rng, block_length):
+    """Joint block-bootstrap draws for unbalanced panels, one column per pair.
 
     In each replication one set of row indices is drawn for the whole panel
-    (contiguous blocks of ``block_length`` rows), so every pair's difference
-    mean is recomputed on the *same* resampled rows — preserving serial
-    dependence (within blocks) and cross-pair dependence (shared rows). The
-    pairwise mean uses the rows where both members are observed in the
-    resample; the NW standard error stays fixed at the original estimate.
+    (circular blocks of ``block_length`` rows), so every pair's difference mean
+    is recomputed on the *same* resampled rows — preserving serial dependence
+    (within blocks) and cross-pair dependence (shared rows). The pairwise mean
+    uses the rows where both members are observed in the resample; the NW
+    standard error stays fixed at the original estimate:
 
-        T_b = max_{(j,k) active} (d̄*_{b,j,k} − Δ̂_{j,k}) / se_{j,k}
+        T*[b, a] = (d̄*_{b,j,k} − Δ̂_{j,k}) / se_{j,k},    a = (j, k), j < k.
     """
-    n = X.shape[0]
-    pairs = np.asarray(active_pairs, dtype=int).reshape(-1, 2)
-    if pairs.shape[0] == 0:
-        return float("inf")
-    center = delta_hat[pairs[:, 0], pairs[:, 1]]
-    scale  = se[pairs[:, 0], pairs[:, 1]]
-
-    T = np.empty(B)
-    for b in range(B):
-        idx  = mbb_indices(n, block_length, rng)
-        stat = (pairwise_means(X[idx], pairs) - center) / scale
-        stat = stat[np.isfinite(stat)]
-        T[b] = stat.max() if stat.size else -np.inf
-    return float(np.quantile(T, 1 - alpha))
+    P = np.asarray(pairs, dtype=int).reshape(-1, 2)
+    return block_bootstrap_draws(
+        X, P, delta_hat[P[:, 0], P[:, 1]], se[P[:, 0], P[:, 1]], B, block_length, rng,
+    )
 
 
 def rank_ci_stepwise_pairwise(
@@ -158,19 +159,25 @@ def rank_ci_stepwise_pairwise(
     Stepwise rank CIs for unbalanced panels.
 
     Uses pairwise complete observations and (by default) Newey-West HAC SEs.
-    Critical values come from a joint moving block bootstrap of whole rows.
+    Critical values come from a joint circular block bootstrap of whole rows;
+    the B resamples are drawn once and reused in every stepdown round.
 
     Parameters
     ----------
     X            : (n, p) array, may contain NaN.
     se_method    : "nw" for Newey-West HAC, "iid" for plain SE.
-    L            : NW bandwidth. None uses the automatic rule
-                   L = floor(4 * (n/100)^{2/9}). Ignored if se_method="iid".
+    L            : NW bandwidth. None uses the Andrews (1991) plug-in for each
+                   pair. Ignored if se_method="iid".
     winsor_pct   : if set (e.g. 95), symmetrically winsorize each pairwise
                    difference series before computing the SE.
     verbose      : print diagnostic summary.
-    block_length : MBB block length. None uses ``default_block_length(X, L)``
+    block_length : block length. None uses ``default_block_length(X, L)``
                    (= L + 1 if L is given, else median Andrews bandwidth + 1).
+
+    Returns
+    -------
+    dict with keys: theta_hat, rank_ci, n_pairs, rejected, n_steps,
+    critical_values (one per stepdown round), block_length.
     """
     rng = np.random.default_rng(seed)
     X = np.asarray(X, dtype=float)
@@ -188,7 +195,7 @@ def rank_ci_stepwise_pairwise(
         print("=== Pairwise shared observations ===")
         print(f"  Min: {valid.min()}, Mean: {valid.mean():.1f}, Max: {valid.max()}")
         print(f"  Pairs with < 20 shared obs: {(valid < 20).sum()}")
-        print(f"  MBB block length: {block_length}")
+        print(f"  Block length: {block_length}")
 
         with np.errstate(invalid="ignore"):
             t_stats = delta_hat / se
@@ -196,29 +203,22 @@ def rank_ci_stepwise_pairwise(
         print(f"\n=== Test statistics (delta_hat / se) ===")
         print(f"  Max: {vals.max():.4f}, Pairs with t > 1.96: {(vals > 1.96).sum()}")
 
-    active = {
-        (j, k) for j in range(p) for k in range(p)
-        if j != k and not np.isnan(se[j, k])
+    pairs, _ = _pair_index(p)
+    draws = {
+        "pairs": pairs,
+        "delta_q": np.array([delta_hat[j, k] for j, k in pairs]),
+        "se_q": np.array([se[j, k] for j, k in pairs]),
+        "T_draws": _bootstrap_draws_pairwise(X, delta_hat, se, pairs, B, rng, block_length),
     }
-    rejected = set()
-
-    while active:
-        cv = _bootstrap_cv_pairwise(X, delta_hat, se, list(active), alpha, B, rng,
-                                    block_length)
-        new_rejections = {
-            (j, k) for (j, k) in active
-            if delta_hat[j, k] - cv * se[j, k] > 0
-        }
-        if not new_rejections:
-            break
-        rejected |= new_rejections
-        active -= new_rejections
+    out = stepdown_rank_ci(draws, p, alpha=alpha)
 
     return {
         "theta_hat": theta_hat,
-        "rank_ci": rank_ci_from_rejections(rejected, p),
+        "rank_ci": out["rank_ci"],
         "n_pairs": n_pairs,
-        "rejected": rejected,
+        "rejected": out["rejected"],
+        "n_steps": out["n_steps"],
+        "critical_values": out["critical_values"],
         "block_length": int(block_length),
     }
 
@@ -248,17 +248,18 @@ def rank_ci_marginal_pairwise(
     For each forecaster j, P(rank_j ∈ CI_j) ≥ 1 - α holds *marginally* —
     the joint coverage across forecasters is NOT controlled.  Each j gets
     its own bootstrap critical value, computed from the 2(p-1) one-sided
-    test statistics involving j.  Tighter than the simultaneous procedure.
+    test statistics involving j; all of them come from one set of block
+    resamples.  Tighter than the simultaneous procedure.
 
     Parameters
     ----------
     X          : (n, p) array, may contain NaN.
     se_method  : "nw" for Newey-West HAC, "iid" for plain SE.
-    L          : NW bandwidth. None uses the automatic rule
-                 L = floor(4 * (n/100)^{2/9}). Ignored if se_method="iid".
+    L          : NW bandwidth. None uses the Andrews (1991) plug-in for each
+                 pair. Ignored if se_method="iid".
     winsor_pct : if set, symmetrically winsorize each pairwise difference
                  series before computing the SE.
-    block_length : MBB block length. None uses ``default_block_length(X, L)``.
+    block_length : block length. None uses ``default_block_length(X, L)``.
 
     Returns
     -------
@@ -276,6 +277,9 @@ def rank_ci_marginal_pairwise(
     if block_length is None:
         block_length = default_block_length(X, L=L)
 
+    pairs, col = _pair_index(p)
+    T = _bootstrap_draws_pairwise(X, delta_hat, se, pairs, B, rng, block_length)
+
     rank_ci = np.empty((p, 2), dtype=int)
     cvs = np.empty(p)
 
@@ -290,8 +294,7 @@ def rank_ci_marginal_pairwise(
             if not np.isnan(se[a, c])
         ]
 
-        cv_j = _bootstrap_cv_pairwise(X, delta_hat, se, pairs_j, alpha, B, rng,
-                                      block_length)
+        cv_j = _max_quantile([_signed_column(T, col, a, c) for a, c in pairs_j], alpha)
         cvs[j] = cv_j
 
         # (j, k): theta_j > theta_k confirmed → k smaller → k BETTER than j
