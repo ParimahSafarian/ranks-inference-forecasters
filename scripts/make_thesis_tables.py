@@ -8,14 +8,16 @@ lives here or in the notebooks. Every rank set comes from the simulation route
 benchmark column/sentence.
 
 Run from anywhere:  <repo>/.venv/bin/python scripts/make_thesis_tables.py [--out DIR] [--skip-mc]
-Tables: spf_indicators, ngdp, three_regimes, and the Appendix B (app:additional) tables
-app_mc_coverage, app_mc_width, app_mc_crossover (Monte Carlo, a few minutes; --skip-mc
-leaves them alone), app_spf_sets, app_ecb_sets, app_gjp, app_m3_blocks, app_m3_robust,
-app_m3_other.
-Printed: the NGDP tau-best sets (sec:apps-spf) and the euro-area results (sec:apps-ecb).
+Tables: spf_indicators, ngdp, three_regimes; the Monte Carlo tables mc_coverage,
+mc_crossover and the Appendix B (app:additional) tables app_mc_coverage, app_mc_width,
+app_mc_crossover, all from one run (a few minutes; --skip-mc leaves them alone); and
+app_spf_sets, app_ecb_sets, app_gjp, app_m3_blocks, app_m3_robust.
+Printed: the NGDP tau-best sets (sec:apps-spf), the euro-area results (sec:apps-ecb), and
+the block-bootstrap benchmark on the application panels (par:mbb; the bootstrap
+sentences of Chapter 8).
 (spf_dep_* come from notebooks/02_primary_analysis.ipynb; mcomp from
-notebooks/mcomp/MCOMP_CI.ipynb section 5; mc_coverage and mc_crossover from
-notebooks/01_toydataset.ipynb.)
+notebooks/mcomp/MCOMP_CI.ipynb. The Monte Carlo designs and seeds are those
+of notebooks/01_toydataset.ipynb.)
 """
 import argparse
 import warnings; warnings.filterwarnings("ignore")
@@ -209,6 +211,41 @@ def ecb_numbers():
             print(f"    {cov:<5} separated={int(_separated(ci, p).sum())}: {sets}")
 
 
+def block_bootstrap_numbers(B=5000):
+    """Block-bootstrap benchmark (par:mbb) on the application panels: the bootstrap
+    sentences of Chapter 8. Each panel is compared with the direct-construction rank
+    sets at the level and B of the result it checks; the bootstrap uses B=5000."""
+    from rankci import rank_ci_stepwise_pairwise as boot
+    from rankci import rank_ci_stepwise_simulation_pairwise as sim
+    from rankci.data.mcomp import official_panel
+    panels = [("SPF NGDP top-8", spf_frame("NGDP"), 0.2, 5000),
+              ("SPF RGDP top-8", spf_frame("RGDP"), 0.2, 5000),
+              ("SPF UNEMP top-8", spf_frame("UNEMP"), 0.2, 5000),
+              ("euro-area HICP", ecb_frame("HICP"), 0.2, 5000),
+              ("euro-area RGDP", ecb_frame("RGDP"), 0.2, 5000),
+              ("GJP top-20", gjp_frame(), 0.2, 5000),
+              ("M3 Paris", official_panel(PARIS, directory=str(DATA / "mcomp")), 0.1, 20000)]
+    for name, F, alpha, B_direct in panels:
+        X, ids = F.values, list(F.columns)
+        p = X.shape[1]
+        direct = sim(X, alpha=alpha, B=B_direct, seed=SEED, covariance="omega",
+                     verbose=False)["rank_ci"]
+        out = boot(X, alpha=alpha, B=B, seed=SEED, verbose=False)
+        cbb = out["rank_ci"]
+        width = lambda ci: (ci[:, 1] - ci[:, 0]).mean() / (p - 1)
+        changed = [j for j in np.argsort(np.nanmean(X, axis=0))
+                   if not np.array_equal(cbb[j], direct[j])]
+        wider = sum(cbb[j, 0] <= direct[j, 0] and cbb[j, 1] >= direct[j, 1] for j in changed)
+        print(f"  block bootstrap, {name} (alpha={alpha}, block length "
+              f"{out['block_length']}): separated {int(_separated(cbb, p).sum())} vs "
+              f"{int(_separated(direct, p).sum())} direct; {len(changed)} of {p} sets "
+              f"differ ({wider} wider), max shift {int(np.abs(cbb - direct).max())}; "
+              f"norm. width {width(cbb):.2f} vs {width(direct):.2f}")
+        for j in changed:
+            print(f"      {ids[j]}: direct [{direct[j, 0]},{direct[j, 1]}] -> "
+                  f"bootstrap [{cbb[j, 0]},{cbb[j, 1]}]")
+
+
 def tab_three_regimes(out_dir):
     from rankci import rank_ci_stepwise_simulation_pairwise as sim
     panels = [("macro (NGDP)", spf_panel("NGDP"), "null"),
@@ -285,7 +322,6 @@ M3_NAMES = {
     "Flors-Pearc2": ("Flores-Pearce2", "E"), "ROBUST-Trend": ("Robust-Trend", "T"),
 }
 PARIS = "Average temperature in Paris"
-MARITAL = "Marital status (numbers in thousands)"
 
 
 def _set(ci_row):
@@ -327,14 +363,6 @@ def m3_official_long():
     return load_m3_official(str(DATA / "mcomp"))
 
 
-def m3_pooled_panel(long, descriptions):
-    """sMAPE panel over every series whose description is in ``descriptions``; rows are
-    (series, horizon) in source order, methods with any missing forecast dropped."""
-    from rankci.data.mcomp import official_panel_from_long
-    g = long[long["description"].isin(descriptions)].assign(description="pooled")
-    return official_panel_from_long(g, "pooled")
-
-
 def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
     """Full Monte Carlo grid (all 11 designs, MDS / direct / block bootstrap on the same
     panels) and the crossover sweep with both projection distances and coverage."""
@@ -358,7 +386,7 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
             + [f"{get(name, m, 'n_steps_mean'):.2f}" for m in ("mds", "omega")]) + r"\\")
     cov_rows.append(r"    \midrule" + "\n    ties: false separation & " + " & ".join(
         f"{get('ties', m, 'false_sep_rate'):.3f}" for m in routes) + r" & & & \\")
-    three = r"\textsc{mds} & $\OmegaDirect$ & \textsc{mbb}"
+    three = r"\textsc{mds} & $\OmegaDirect$ & \textsc{cbb}"
     _write(out_dir, "app_mc_coverage", _table(
         "tab:app-mc-coverage", "Monte Carlo coverage, full grid",
         r"Joint coverage and the smallest marginal coverage over the five forecasters, "
@@ -381,6 +409,32 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
         f"    design & {three} & \\textsc{{mds}} & $\\OmegaDirect$ & \\textsc{{mds}} & $\\OmegaDirect$\\\\",
         width_rows))
 
+    # Table 7.1 (tab:mc-coverage): the main-text subset of the same run
+    main_rows = []
+    for name in ("baseline", "rho=0.6", "rho=0.9", "sigc=0", "sigc=4", "imbal=0.4",
+                 "nonstat", "realistic"):
+        bold = (lambda s: rf"\textbf{{{s}}}") if name == "realistic" else (lambda s: s)
+        cells = ([f"{get(name, m, 'joint_coverage'):.3f}" for m in routes]
+                 + [bold(f"{get(name, m, 'mean_width'):.3f}") for m in ("mds", "omega")]
+                 + [f"{get(name, 'bootstrap', 'mean_width'):.3f}"]
+                 + [f"{get(name, m, 'proj_gap_mean'):.3f}" for m in ("mds", "omega")])
+        main_rows.append(f"    {bold(MC_LABELS[name])} & " + " & ".join(cells) + r"\\")
+    _write(out_dir, "mc_coverage", _table(
+        "tab:mc-coverage", "Monte Carlo coverage and width",
+        r"Joint coverage, mean rank-CI width, and" "\n  "
+        r"mean projection gap, MDS vs.\ direct-$\OmegaDirect$, with the joint circular block" "\n  "
+        r"bootstrap (\textsc{cbb}, \S\ref{par:mbb}) as a covariance-free benchmark ($R=500$," "\n  "
+        r"$B=2000$, $\alpha=0.05$, identical panels). Coverage is nominal for all three; on" "\n  "
+        r"clean panels they agree and the MDS gap is $\approx 0$; the gap and the width" "\n  "
+        r"ordering flip only in the \emph{realistic} (non-stationary $+$ unbalanced) design," "\n  "
+        r"where the bootstrap sides with $\OmegaDirect$.",
+        "lcccccccc",
+        r"    & \multicolumn{3}{c}{joint coverage} & \multicolumn{3}{c}{mean width}" "\n"
+        r"    & \multicolumn{2}{c}{projection gap}\\" "\n"
+        r"    \cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-9}" "\n"
+        r"    design & \textsc{mds} & $\OmegaDirect$ & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$" "\n"
+        r"    & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$\\", main_rows))
+
     sweep = [{**MC_BASE, "name": f"vol{v}", "imbalance": 0.4, "n_vol_episodes": 5,
               "vol_scale": float(v)} for v in MC_VOL_GRID]
     rs = coverage_study(sweep, R=R, B=B, alpha=alpha, methods=("mds", "omega"),
@@ -402,6 +456,33 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
         r" & \multicolumn{2}{c}{projection distance}\\" "\n"
         r"    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}" "\n"
         f"    \\texttt{{vol\\_scale}} & {two} & {two} & {two}\\\\", rows))
+
+    # Table 7.2 (tab:mc-crossover): widths and the MDS gap of the same sweep;
+    # bold marks the direct construction once it is the narrower one
+    at = lambda v, m, c: rs.loc[(rs["name"] == f"vol{v}") & (rs["method"] == m), c].item()
+    w_om = [f"{at(v, 'omega', 'mean_width'):.2f}" for v in MC_VOL_GRID]
+    w_om = [rf"\textbf{{{w}}}" if at(v, "omega", "mean_width") < at(v, "mds", "mean_width")
+            else w for v, w in zip(MC_VOL_GRID, w_om)]
+    _write(out_dir, "mc_crossover", r"""\begin{table}[htb]
+  \centering
+  \caption[Width crossover]{Width crossover under growing non-stationarity (imbalance
+  fixed at $0.4$; larger \texttt{vol\_scale} $=$ bigger crisis episodes). As the MDS
+  projection gap grows, its rank sets overtake the direct construction's.}
+  \label{tab:mc-crossover}
+  \small
+  \begin{tabular}{lccccccc}
+    \toprule
+    \texttt{vol\_scale} & """ + " & ".join(map(str, MC_VOL_GRID)) + r"""\\
+    \midrule
+    \textsc{mds} width          & """ + " & ".join(
+        f"{at(v, 'mds', 'mean_width'):.2f}" for v in MC_VOL_GRID) + r"""\\
+    $\OmegaDirect$ width        & """ + " & ".join(w_om) + r"""\\
+    \textsc{mds} projection gap & """ + " & ".join(
+        f"{at(v, 'mds', 'proj_gap_mean'):.2f}" for v in MC_VOL_GRID) + r"""\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+""")
 
 
 def _macro_block(title, F, alpha=0.2, B=5000):
@@ -477,8 +558,7 @@ def tab_app_gjp(out_dir):
 
 
 def tab_app_m3(out_dir):
-    """M3 Paris record: block-level sMAPEs, robustness of the rank sets, and the two
-    other M3 indicators with many series."""
+    """M3 Paris record: block-level sMAPEs and robustness of the rank sets."""
     from rankci import rank_ci_stepwise_simulation_pairwise as sim
     from rankci.data.mcomp import official_panel_from_long
     long = m3_official_long()
@@ -530,35 +610,6 @@ def tab_app_m3(out_dir):
         "lrccc",
         r"    method & mean sMAPE & $\alpha=0.1$ & $\alpha=0.05$ & block averages\\", rows))
 
-    # two other indicators with many series
-    gdp = sorted(d for d in long["description"].unique()
-                 if "GDP" in d and "Cnst Prices" in d)
-    panels = [("Paris temperature", "monthly", P),
-              ("real GDP", "quarterly", m3_pooled_panel(long, gdp)),
-              ("marital status", "yearly", official_panel_from_long(long, MARITAL))]
-    rows = []
-    for name, freq, Q in panels:
-        Z = Q.values
-        n, p = Z.shape
-        ci = run(Z, 0.1)
-        series = Q.index.get_level_values("series").nunique()
-        width = (ci[:, 1] - ci[:, 0]).mean() / (p - 1)
-        rows.append(f"    {name} & {freq} & {series} & {n} & {p} & {_max_t(Z):.2f} & "
-                    f"{width:.2f} & {int(_separated(ci, p).sum())} & "
-                    f"{int((ci[:, 0] == 1).sum())}\\\\")
-    _write(out_dir, "app_m3_other", _table(
-        "tab:app-m3-other", "Three M3 indicators compared",
-        r"Rank inference for the M3 submissions on the Paris record and on two other "
-        r"indicators with many series (direct construction, $\alpha=0.1$, $B=20000$). "
-        r"Rows of each panel are (series, horizon) pairs and the loss is sMAPE. Real GDP "
-        r"pools the " + f"{len(gdp)}" + r" constant-price GDP indicators of M3 "
-        r"(by expenditure and by kind of activity, six countries). ``Separated'' counts "
-        r"methods with a non-trivial set; the last column counts the methods whose set "
-        r"contains rank one.",
-        "llrrrcccc",
-        r"    indicator & frequency & series & $n$ & $p$ & $\max|t|$"
-        r" & \shortstack{norm.\\width} & separated & \shortstack{rank\\one}\\", rows))
-
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
@@ -572,6 +623,7 @@ if __name__ == "__main__":
     tab_ngdp(out_dir)
     tab_three_regimes(out_dir)
     ecb_numbers()
+    block_bootstrap_numbers()
     tab_app_macro(out_dir)
     tab_app_gjp(out_dir)
     tab_app_m3(out_dir)
