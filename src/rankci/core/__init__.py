@@ -4,6 +4,7 @@ These modules operate on a plain (n, p) numpy panel and do not know where the
 data came from.
 """
 from .bootstrap import rank_confidence_intervals_bootstrap
+from .block_bootstrap import default_block_length, mbb_indices
 from .simulation import (
     rank_confidence_intervals_simulation,
     rank_confidence_intervals_simulation_pairwise,
@@ -19,6 +20,9 @@ from .stepwise_simulation import (
     rank_ci_marginal_simulation_pairwise,
 )
 from .pairwise import compute_pairwise, nw_se, cov_theta_pairwise
+from .bandwidth import andrews_bandwidth, andrews_alpha1, ar1_coefficient
+from .omega import cov_via_omega, pair_index, stacked_nw_balanced
+from .covariance import studentized_null_draws, stepdown_rank_ci
 from .tau_best import (
     tau_best_from_rank_ci,
     tau_best_pairwise,
@@ -27,6 +31,8 @@ from .tau_best import (
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
+    "default_block_length",
+    "mbb_indices",
     "rank_confidence_intervals_simulation",
     "rank_confidence_intervals_simulation_pairwise",
     "rank_ci_stepwise",
@@ -38,6 +44,14 @@ __all__ = [
     "compute_pairwise",
     "nw_se",
     "cov_theta_pairwise",
+    "andrews_bandwidth",
+    "andrews_alpha1",
+    "ar1_coefficient",
+    "cov_via_omega",
+    "pair_index",
+    "stacked_nw_balanced",
+    "studentized_null_draws",
+    "stepdown_rank_ci",
     "tau_best_from_rank_ci",
     "tau_best_pairwise",
     "tau_best_simulation_pairwise",

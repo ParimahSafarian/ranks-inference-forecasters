@@ -6,6 +6,8 @@ Shared pairwise utilities for rank confidence intervals.
 """
 import numpy as np
 
+from .bandwidth import andrews_bandwidth
+
 
 # ── Newey-West HAC SE ────────────────────────────────────────────────────────
 
@@ -17,28 +19,35 @@ def nw_se(
     """
     Newey-West HAC standard error for the mean of 1-D time series d.
 
+    Bartlett kernel throughout. The automatic bandwidth is the Andrews (1991)
+    data-dependent plug-in (see :mod:`rankci.core.bandwidth`); the old
+    Newey--West ``floor(4 (n/100)^{2/9})`` rule has been removed.
+
     Parameters
     ----------
     d          : 1-D array of pairwise differences (no NaNs).
-    L          : bandwidth. If None, uses the automatic rule
-                 L = floor(4 * (n/100)^{2/9}).
+    L          : bandwidth. If None, uses the Andrews plug-in
+                 ``andrews_bandwidth(d)`` (computed on the possibly-winsorized
+                 series). Pass an explicit integer to override.
     winsor_pct : if set (e.g. 95), symmetrically winsorize d at the
                  (100 - winsor_pct, winsor_pct) percentiles before
-                 computing the mean and SE. None disables winsorization.
+                 computing the mean, bandwidth, and SE. None disables it.
 
     Returns
     -------
     (mean, se) of the (possibly winsorized) series.
     """
-    n = len(d)
-    if L is None:
-        L = int(np.floor(4 * (n / 100) ** (2 / 9)))
-    L = min(L, n - 1)
+    d = np.asarray(d, dtype=float)
+    n = d.size
 
     if winsor_pct is not None:
         lo = np.percentile(d, 100 - winsor_pct)
         hi = np.percentile(d, winsor_pct)
         d = np.clip(d, lo, hi)
+
+    if L is None:
+        L = andrews_bandwidth(d)
+    L = min(L, n - 1)
 
     mean = d.mean()
     dc = d - mean
@@ -124,7 +133,8 @@ def cov_theta_pairwise(
     se_method: str = "iid",
     L: int | None = None,
     se_pair: np.ndarray | None = None,
-) -> np.ndarray:
+    return_diagnostics: bool = False,
+):
     """
     Estimate Cov(theta_hat) consistent with the chosen pairwise SE.
 
@@ -157,11 +167,18 @@ def cov_theta_pairwise(
                   computed via `compute_pairwise(X, se_method=se_method,
                   L=L, min_overlap=min_overlap)`.
 
+    return_diagnostics : if True, also return a dict with the raw (pre-PSD)
+                Sigma, the Frobenius projection gap ``||Sigma - Sigma_+||_F``,
+                and the smallest pre-projection eigenvalue — mirroring
+                :func:`rankci.core.omega.cov_via_omega` so the two covariance
+                routes can be compared head-to-head.
+
     Returns
     -------
     Sigma_hat : (p, p) PSD covariance matrix of theta_hat. Rank-deficient by
                 construction (1^T Sigma_hat = 0); only pairwise contrasts are
                 identified, which is all the simulation needs.
+    (diagnostics dict, if requested)
     """
     p = X.shape[1]
 
@@ -178,7 +195,17 @@ def cov_theta_pairwise(
     J = np.eye(p) - np.ones((p, p)) / p
     Sigma = -0.5 * (J @ S2 @ J)
 
-    return _nearest_psd(Sigma)
+    Sigma_psd = _nearest_psd(Sigma)
+
+    if not return_diagnostics:
+        return Sigma_psd
+
+    diagnostics = {
+        "Sigma_raw": Sigma,
+        "frob_gap": float(np.linalg.norm(Sigma - Sigma_psd, ord="fro")),
+        "min_eig_raw": float(np.linalg.eigvalsh((Sigma + Sigma.T) / 2).min()),
+    }
+    return Sigma_psd, diagnostics
 
 
 # ── Rank CIs from pairwise CIs ──────────────────────────────────────────────

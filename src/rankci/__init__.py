@@ -20,6 +20,8 @@ keeps source-of-truth obvious in the notebooks.
 # Re-export source-agnostic engines and shared panel helpers
 from .core import (  # noqa: F401
     rank_confidence_intervals_bootstrap,
+    default_block_length,
+    mbb_indices,
     rank_confidence_intervals_simulation,
     rank_confidence_intervals_simulation_pairwise,
     rank_ci_stepwise,
@@ -31,14 +33,25 @@ from .core import (  # noqa: F401
     compute_pairwise,
     nw_se,
     cov_theta_pairwise,
+    andrews_bandwidth,
+    andrews_alpha1,
+    ar1_coefficient,
+    cov_via_omega,
+    pair_index,
+    stacked_nw_balanced,
+    studentized_null_draws,
+    stepdown_rank_ci,
     tau_best_from_rank_ci,
     tau_best_pairwise,
     tau_best_simulation_pairwise,
 )
 from .data import select_top_forecasters, winsorize_panel  # noqa: F401
+from .sim import simulate_panel, true_ranks, coverage_study  # noqa: F401
 
 __all__ = [
     "rank_confidence_intervals_bootstrap",
+    "default_block_length",
+    "mbb_indices",
     "rank_confidence_intervals_simulation",
     "rank_confidence_intervals_simulation_pairwise",
     "rank_ci_stepwise",
@@ -50,9 +63,20 @@ __all__ = [
     "compute_pairwise",
     "nw_se",
     "cov_theta_pairwise",
+    "andrews_bandwidth",
+    "andrews_alpha1",
+    "ar1_coefficient",
+    "cov_via_omega",
+    "pair_index",
+    "stacked_nw_balanced",
+    "studentized_null_draws",
+    "stepdown_rank_ci",
     "tau_best_from_rank_ci",
     "tau_best_pairwise",
     "tau_best_simulation_pairwise",
     "select_top_forecasters",
     "winsorize_panel",
+    "simulate_panel",
+    "true_ranks",
+    "coverage_study",
 ]
