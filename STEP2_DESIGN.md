@@ -84,10 +84,15 @@ L_ab  = min(L_a, L_b, n_ab - 1)
 g0    = sum_{t in Tab}            dtil^a_t * dtil^b_t
 gh    = sum_{t: t,t-h in-support} dtil^a_t * dtil^b_{t-h}     # gamma^{ab}_h
 gh_rev= sum_{t: t,t-h in-support} dtil^b_t * dtil^a_{t-h}     # gamma^{ba}_h
-Omega[a,b] = (1/n_ab) * ( g0/n_ab + sum_{h=1..L_ab} w_h*(gh+gh_rev)/n_ab )
+Omega[a,b] = ( g0 + sum_{h=1..L_ab} w_h*(gh+gh_rev) ) / (n_a * n_b)
              with w_h = 1 - h/(L_ab+1)
 ```
-i.e. **single common divisor `n_ab`** applied across all lags (not per-lag counts).
+i.e. **single divisor `n_a n_b` per entry** applied across all lags (not per-lag
+counts). This is Cov(mean over T_a, mean over T_b) ≈ (n_ab/(n_a n_b))·LRV_ab.
+(Corrected 2026-11-22: the original `1/n_ab²` overstated off-diagonals by
+`n_a n_b / n_ab²` on unbalanced panels; the balanced case and the diagonal are
+unchanged. With `n_a n_b` the raw matrix is `D⁻¹ S D⁻¹` of a zero-filled Bartlett
+form, hence PSD under a common bandwidth even when unbalanced.)
 Symmetrize, then `_nearest_psd` (Higham eigen-clip). Diagnostics (optional):
 `frob_gap = ||Omega - Omega_psd||_F`, `min_eig_before`.
 

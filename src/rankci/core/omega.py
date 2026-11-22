@@ -9,13 +9,19 @@ the *pairwise-of-pairs* (route (i)) estimator of ``Reports/omega_unbalanced.tex`
 For unordered pairs a = (j, k), j < k, with difference series
 d^a_t = X_{t,j} - X_{t,k} on support T_a = T_j ∩ T_k:
 
-    Omega_ab = (1 / n_ab^2) [ g0 + sum_{h=1}^{L_ab} w_h (g^{ab}_h + g^{ba}_h) ],
+    Omega_ab = (1 / (n_a n_b)) [ g0 + sum_{h=1}^{L_ab} w_h (g^{ab}_h + g^{ba}_h) ],
     g^{ab}_h = sum_{t : t, t-h both in-support} dtil^a_t dtil^b_{t-h},
     w_h      = 1 - h / (L_ab + 1),          (Bartlett)
 
-where n_ab = |T_a ∩ T_b| is the *pair-of-pairs overlap* (the single common
-divisor applied across all lags — the normalization that keeps the balanced
-estimator PSD), and dtil^a is d^a demeaned on its own support.
+where n_a = |T_a| and dtil^a is d^a demeaned on its own support. The divisor
+n_a n_b is the one Cov(mean_{T_a} d^a, mean_{T_b} d^b) carries: the cross sum
+runs over the n_ab = |T_a ∩ T_b| jointly observed dates, so the entry is
+(n_ab / (n_a n_b)) x (long-run cross-covariance). It is a single divisor per
+entry across all lags, and it acts as the congruence D^{-1} S D^{-1}, D =
+diag(n_a), of the zero-filled Bartlett quadratic form S — so under a common
+bandwidth the raw matrix is PSD even on an unbalanced panel. (Dividing by
+n_ab^2 instead overstates every off-diagonal entry by n_a n_b / n_ab^2 >= 1
+and is not a congruence, so it does not preserve PSD-ness.)
 
 Design points (all from the LaTeX, or flagged in STEP2_DESIGN.md):
   * Bandwidth per series by the Andrews plug-in; off-diagonal L_ab = min(L_a, L_b).
@@ -166,7 +172,7 @@ def cov_via_omega(
                 g_ba = _cross_sum(Dtil[b], Dtil[a], h)  # gamma^{ba}_h
                 s += w * (g_ab + g_ba)
 
-            val = s / (n_ab ** 2)                      # single common divisor
+            val = s / (float(n_a[a]) * float(n_a[b]))  # Cov of means on T_a, T_b
             Omega[a, b] = Omega[b, a] = val
 
     Omega = (Omega + Omega.T) / 2.0
