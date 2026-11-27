@@ -1,0 +1,20 @@
+\begin{table}[htb]
+  \centering
+  \caption[NGDP rank confidence sets]{NGDP, top-5 SPF forecasters, one-quarter-ahead
+  squared error ($\alpha=0.2$, $B=5000$). The MDS simulation loses calibration and
+  reports the trivial $[1,5]$ throughout; the direct construction separates three
+  forecasters.}
+  \label{tab:ngdp}
+  \small
+  \begin{tabular}{lrcc}
+    \toprule
+    ID & mean MSE & CI (\textsc{mds}) & CI ($\OmegaDirect$)\\
+    \midrule
+    65  & 8{,}634   & $[1,5]$ & $[3,5]$\\
+    84  & 9{,}874   & $[1,5]$ & $[1,5]$\\
+    428 & 105{,}997 & $[1,5]$ & $[1,5]$\\
+    426 & 122{,}073 & $[1,5]$ & $[1,4]$\\
+    433 & 157{,}364 & $[1,5]$ & $[1,4]$\\
+    \bottomrule
+  \end{tabular}
+\end{table}

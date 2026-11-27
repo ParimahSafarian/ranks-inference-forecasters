@@ -1,0 +1,36 @@
+\begin{table}[htb]
+  \centering
+  \caption[M3 Paris record: robustness of the rank sets]{Rank confidence sets of the 24 M3 submissions on the Paris record under the direct construction ($B=20000$): the sets of Table~\ref{tab:mcomp} ($\alpha=0.1$, $n=306$), the same panel at $\alpha=0.05$, and the panel of block averages ($\alpha=0.1$, $n=17$), in which each block's loss is averaged over its 18 held-out months.}
+  \label{tab:app-m3-robust}
+  \small
+  \begin{tabular}{lrccc}
+    \toprule
+    method & mean sMAPE & $\alpha=0.1$ & $\alpha=0.05$ & block averages\\
+    \midrule
+    B-J automatic & 10.10 & $[1,12]$ & $[1,13]$ & $[1,14]$\\
+    ForecastPro & 10.13 & $[1,12]$ & $[1,14]$ & $[1,15]$\\
+    ForecastX & 10.39 & $[1,15]$ & $[1,16]$ & $[1,16]$\\
+    Dampen & 10.45 & $[1,16]$ & $[1,17]$ & $[1,16]$\\
+    Comb S-H-D & 10.46 & $[1,15]$ & $[1,16]$ & $[1,17]$\\
+    Theta & 10.50 & $[1,16]$ & $[1,17]$ & $[1,16]$\\
+    Winter & 10.66 & $[1,18]$ & $[1,19]$ & $[1,17]$\\
+    Holt & 10.86 & $[1,19]$ & $[1,20]$ & $[1,20]$\\
+    Single & 10.92 & $[1,20]$ & $[1,21]$ & $[1,18]$\\
+    RBF & 10.95 & $[1,20]$ & $[1,21]$ & $[1,20]$\\
+    SmartFcs & 11.02 & $[1,20]$ & $[1,21]$ & $[1,19]$\\
+    AutoBox2 & 11.26 & $[3,20]$ & $[3,20]$ & $[2,20]$\\
+    Naive2 & 11.62 & $[4,21]$ & $[2,21]$ & $[1,21]$\\
+    AAM1 & 11.96 & $[3,21]$ & $[2,21]$ & $[3,21]$\\
+    Theta-sm & 12.23 & $[9,21]$ & $[9,21]$ & $[9,21]$\\
+    AutoBox1 & 12.45 & $[8,21]$ & $[7,21]$ & $[1,21]$\\
+    AutoBox3 & 12.53 & $[7,21]$ & $[3,21]$ & $[9,21]$\\
+    Automat ANN & 12.57 & $[7,21]$ & $[7,21]$ & $[6,21]$\\
+    PP-Autocast & 12.79 & $[1,21]$ & $[1,22]$ & $[1,22]$\\
+    AAM2 & 12.91 & $[4,21]$ & $[4,21]$ & $[9,21]$\\
+    ARARMA & 14.09 & $[13,21]$ & $[9,21]$ & $[13,21]$\\
+    Flores-Pearce2 & 26.89 & $[22,23]$ & $[22,23]$ & $[22,23]$\\
+    Robust-Trend & 27.77 & $[22,24]$ & $[21,24]$ & $[21,24]$\\
+    Flores-Pearce1 & 37.80 & $[23,24]$ & $[23,24]$ & $[23,24]$\\
+    \bottomrule
+  \end{tabular}
+\end{table}

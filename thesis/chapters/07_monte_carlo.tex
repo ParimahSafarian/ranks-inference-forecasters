@@ -1,0 +1,122 @@
+\chapter{Monte Carlo Evidence}
+\label{ch:mc}
+
+On synthetic panels where the truth, the $\theta$ ordering, is known, both covariance
+constructions attain nominal coverage, and the direct construction remains calibrated
+where the MDS reconstruction can fail. The two constructions of Chapter~\ref{ch:cross}
+coincide on a balanced panel, exactly under a common bandwidth and asymptotically under
+per-series bandwidths (Proposition~\ref{prop:equivalence}), but target different objects
+on an unbalanced one (Remark~\ref{rem:unbalanced-targets}). The table script writes
+Tables~\ref{tab:mc-coverage} and~\ref{tab:mc-crossover} and the tables of
+Appendix~\ref{app:add-mc} in a single run, using the designs of the notebook
+\texttt{01\_toydataset}. The figure script draws Figure~\ref{fig:mc-crossover}. The NGDP
+draw diagnostics of \S\ref{sec:mc-mechanism} come from the last section of the notebook
+(Table~\ref{tab:impl-repro}).
+
+\section{Design}
+\label{sec:mc-design}
+
+The data-generating process is the additive common-shock model the theory assumes,
+\begin{equation}
+  X_{t,j} \;=\; \theta_j + c_t + w_t\,u_{t,j},
+  \qquad t=1,\dots,T,\ \ j=1,\dots,p,
+  \label{eq:dgp}
+\end{equation}
+with four controllable ingredients. The idiosyncratic term $u_{t,j}$ is AR(1) with
+coefficient $\rho$ (serial dependence). The common shock $c_t$ is additive with variance
+$\sigma_c^2$ (cross-sectional dependence) and cancels in the differences
+$d^{jk}_t = \theta_j-\theta_k + w_t(u_{t,j}-u_{t,k})$. The volatility path $w_t$ has a
+few localized episodes (non-stationarity, crisis quarters). Staggered entry and exit
+introduce panel imbalance. The means $\theta_j$ fix the true ranks (rank~1 is the
+smallest $\theta$). Under an imbalance $\iota$, forecaster $j$ is observed on a single
+window of $\operatorname{round}((1-\iota)T)$ consecutive dates, with the windows' starts
+spread evenly over the sample. The non-stationary designs set $w_t$ to the episode height
+(\texttt{vol\_scale}, $12$ unless stated) on five windows of eight dates at random
+positions and $w_t=1$ elsewhere; only the idiosyncratic part is scaled.
+
+For each design I draw $R=500$ replications and run the stepwise simulation procedure at
+$\alpha=0.05$ with $B=2000$ draws under both covariance constructions on the same panels
+(a paired comparison). I record the empirical joint coverage
+of the rank sets ($\Prob$ that every true rank lies in its confidence set), the mean
+rank-set width (lower is sharper), the false-separation rate on a design with tied
+$\theta$, and the projection distance $\Frob{\Sh-\Sh^{+}}$ or
+$\Frob{\Omegahat-\Omegahat^{+}}$. The block bootstrap of \S\ref{par:mbb} runs on the
+same panels, with $B=2000$ resamples, as a covariance-free benchmark.
+
+\section{Coverage and equivalence}
+\label{sec:mc-coverage}
+
+Table~\ref{tab:mc-coverage} compares the two constructions across sweeps around a
+baseline ($p=5$, $T=200$, $\rho=0.3$, $\sigma_c=1$, balanced) and on the combined
+realistic design. Three facts stand out. First, both constructions hold nominal joint
+coverage everywhere (never below $0.968$ at the nominal $0.95$), so the procedure is
+valid with either covariance input. Second, on the balanced stationary designs the two
+are close to equivalent. The MDS projection distance is numerically zero and the widths
+agree within $0.01$, except at $\rho=0.9$, where MDS is $0.03$ sharper.
+Proposition~\ref{prop:equivalence}(iii) predicts exactly this: under the per-series
+Andrews bandwidths used here, the two constructions agree only asymptotically. The same
+fact explains the small positive projection distance of $\Omegahat$ on balanced panels.
+Third, the common shock is inert. It cancels exactly in every $d^{jk}_t$, so the
+$\sigma_c$ designs differ from the baseline only through their seeds, and the spread of
+these rows ($0.44$--$0.47$) indicates the size of the Monte Carlo noise in the widths.
+
+The block bootstrap covers at or above nominal on every
+design (never below $0.966$). On the balanced stationary designs its widths are within
+$0.02$ of $\OmegaDirect$'s, except at $\rho=0.9$, where it is the sharpest of the three
+($1.96$ against $2.00$ for MDS and $2.02$ for $\OmegaDirect$) and covers about as often
+($0.966$ against $0.968$; Appendix~\ref{app:add-mc}). Under imbalance alone it is the
+widest of the three ($1.107$ against $1.050$ for $\OmegaDirect$ and $1.005$ for MDS at
+imbalance $0.4$). On the realistic design it is sharper than MDS ($3.566$ vs.\ $3.765$)
+and sides with $\OmegaDirect$ ($3.518$). Because the bootstrap uses no covariance
+estimate, this pattern is consistent with the MDS widths there reflecting lost
+calibration rather than the data.
+
+\tabMcCoverage
+
+On the tie design (a cluster of equal-$\theta$ forecasters), the false-separation rate
+per tied pair is $0.02$ for both constructions and for the block bootstrap, below the
+nominal $\alpha=0.05$, so no route confidently orders forecasters that are
+genuinely equal. Appendix~\ref{app:add-mc} reports the full grid of designs, with
+marginal coverage.
+
+\section{The calibration mechanism, and where the direct construction wins}
+\label{sec:mc-mechanism}
+
+Imbalance alone (row ``imbalance 0.4'') keeps MDS marginally sharper ($1.005$ vs.\
+$1.050$), and non-stationarity alone (balanced) is nearly neutral. Their combination, the
+realistic design, raises the MDS projection distance from essentially zero to $0.25$ and
+flips the width ordering: $\OmegaDirect$ becomes sharper ($3.518$ vs.\ $3.765$). Under
+imbalance the MDS route also targets a different object from $\OmegaDirect$
+(Remark~\ref{rem:unbalanced-targets}), but on the stationary imbalance designs that
+misspecification costs little. The cost appears when it is compounded by a loss of
+calibration in the MDS route.
+
+Table~\ref{tab:mc-crossover} makes the crossover explicit. As the height of the
+volatility episodes (\texttt{vol\_scale}) increases with imbalance held fixed, the MDS
+projection distance grows monotonically, and the MDS sets become wider than
+$\OmegaDirect$'s from a height of $6$ onward. Coverage stays at one throughout.
+Figure~\ref{fig:mc-crossover} plots the widths and the projection distance.
+
+\tabMcCrossover
+
+\figMcCrossover
+
+The MDS route loses calibration through its studentization. It reconstructs a level
+covariance from the pairwise standard errors and projects it to positive
+semi-definiteness, but still studentizes the simulated contrasts by the original
+$\seNW{jk}$. When the standard-error matrix is badly non-Euclidean, the projection
+distorts the implied pairwise variances. The studentized draws are then no longer
+unit-variance, the maximum in \eqref{eq:cv-sim} inflates, and the critical value, hence
+every confidence set, balloons. The direct construction studentizes by
+$\sqrt{\Omegahat^{+}_{aa}}$, the diagonal of its own projected matrix, so its draws are
+unit-variance by construction.
+
+The real data confirm the mechanism at its extreme. On the unbalanced, heavy-tailed NGDP
+panel (Chapter~\ref{ch:apps}), the MDS studentized draws have standard deviations ranging
+from $1.0$ to $12.1$ and a two-sided $5\%$ critical value of $24.1$, which collapses
+every rank set to $[1,p]$. The direct construction's draws are unit-variance, and its
+$5\%$ critical value is $2.7$. The Monte Carlo evidence thus has two parts. Under the
+idealized model the two constructions are validated and asymptotically equivalent. The
+direct construction's advantage is a robustness property that appears precisely when
+non-stationarity and imbalance drive the standard-error matrix away from Euclidean
+embeddability.

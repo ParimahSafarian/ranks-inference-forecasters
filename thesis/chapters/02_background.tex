@@ -1,0 +1,72 @@
+\chapter{Background}
+\label{ch:background}
+
+The thesis builds on three literatures: inference for ranks, which supplies the
+procedure; HAC estimation, which supplies the standard errors; and forecast evaluation,
+where the applications belong.
+
+\section{Inference for ranks}
+\label{sec:bg-mrsw}
+
+\citet{mogstad2024} develop simultaneous inference for the ranks of a vector of
+populations. The rank of population $j$ is determined by the signs of the pairwise
+differences $\theta_j-\theta_k$, so inference on ranks reduces to simultaneous inference
+on the signs of all pairwise contrasts. The inputs are estimators
+$\hat\theta_1,\dots,\hat\theta_p$ of population features and a (consistent, positive
+semi-definite) estimate of their covariance, of which the procedure uses only the part
+that governs the contrasts, $A\Sigma A^\top$ in the notation of Chapter~\ref{ch:cross}.
+The procedure studentizes each contrast, takes the maximum over the family of pairwise
+hypotheses, and calibrates a critical value by simulating that maximum under the joint
+null. Controlling the maximum controls the family-wise error rate, so the rank sets have
+simultaneous coverage. A stepwise refinement in the spirit of \citet{romanowolf2005}
+recovers power by recomputing the critical value of the maximum over a shrinking set of
+undecided pairs. The same machinery yields confidence sets for the $\tau$-best
+populations. The procedure treats the covariance matrix as an input; it says nothing
+about how to estimate one under dependence. That estimation is the subject of this
+thesis.
+
+The critical value could instead come from resampling the data. A nonparametric
+bootstrap that resamples observations independently, however, discards the serial
+dependence of the loss differences, one of the two forms of dependence this thesis
+addresses; the standard remedy is to resample blocks of consecutive observations
+\citep{kunsch1989}. I obtain every headline result by simulating from the estimated
+covariance, a parametric bootstrap (\S\ref{sec:studentized}), and use a joint block
+bootstrap only as a covariance-free benchmark (\S\ref{par:mbb}).
+
+\section{HAC and long-run variance estimation}
+\label{sec:bg-hac}
+
+Because forecast losses are serially correlated, the variance of a mean loss depends on
+the long-run variance, the sum of all autocovariances, and not on the contemporaneous
+variance $\gamma_0$. Summing all sample autocovariances does not estimate it: the
+high-lag terms are very noisy, and for demeaned data the full sum is identically zero.
+\citet{neweywest1987} truncate the sum at a bandwidth and down-weight it with the
+Bartlett kernel, whose linear taper guarantees a non-negative estimate. The bandwidth
+governs accuracy: too few lags bias the variance downward under positive
+autocorrelation, and too many admit noise. \citet{andrews1991} puts kernel choice and
+bandwidth selection on a mean-squared-error-optimal footing and derives the optimal rate
+for each kernel class and a data-dependent plug-in bandwidth that reads the optimal
+number of lags off a fitted low-order model; \citet{neweywest1994} give a companion
+automatic procedure. I use the Bartlett kernel with the Andrews plug-in bandwidth
+throughout (Chapter~\ref{ch:serial}), for two reasons. The kernel lies in the Andrews
+class of kernels that generate positive semi-definite estimates, and its compact support
+is more robust than an unbounded kernel on the thin, unbalanced overlaps that arise when
+the covariance is assembled pairwise.
+
+\section{Forecast evaluation and ranking}
+\label{sec:bg-forecast}
+
+\citet{dieboldmariano1995}
+test the equal accuracy of two forecasts with a studentized mean loss differential and a
+HAC standard error. Their statistic is exactly the pairwise object at the base of my
+construction, but for a single pair. Moving from a pair to a full ranking raises a
+multiplicity problem that a sequence of pairwise tests does not address. The closest
+relative of rank inference is the \emph{Model Confidence Set} of \citet{hansen2011mcs},
+which returns the set of models that cannot be distinguished from the best at a given
+confidence level, again via a studentized statistic and a bootstrap. Rank confidence
+sets complement it: they report, for every unit, the full interval of ranks the data
+cannot reject, rather than a single top set. They also inherit the same need for a
+dependence-robust covariance, which this thesis supplies. The empirical applications of
+Chapter~\ref{ch:apps} are professional-forecaster surveys (the U.S.\ and euro-area
+Surveys of Professional Forecasters), a geopolitical judgement tournament, and the M3
+forecasting competition.

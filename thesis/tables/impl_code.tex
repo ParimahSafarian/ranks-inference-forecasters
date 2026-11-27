@@ -1,0 +1,53 @@
+\begin{table}[htb]
+  \centering
+  \caption[From the method to the code]{Where each step of the procedure is
+  implemented. Paths are relative to \texttt{src/rankci/}; equation and section
+  numbers refer to the main text.}
+  \label{tab:impl-code}
+  \small
+  \begin{tabular}{p{5.4cm}p{8.4cm}}
+    \toprule
+    step & module: function\\
+    \midrule
+    Contrasts $\Deltahat_{j,k}$ and HAC standard errors $\seNW{jk}$,
+    \eqref{eq:contrast}, \eqref{eq:nw}, \eqref{eq:senw}
+      & \texttt{core/pairwise.py}: \texttt{compute\_pairwise}, \texttt{nw\_se}\\
+    Andrews plug-in bandwidth \eqref{eq:andrews}
+      & \texttt{core/bandwidth.py}: \texttt{andrews\_bandwidth},
+        \texttt{andrews\_alpha1}, \texttt{ar1\_coefficient}\\
+    MDS covariance \eqref{eq:doublecentre} and its projection
+    (\S\ref{sec:mds-psd})
+      & \texttt{core/pairwise.py}: \texttt{cov\_theta\_pairwise}\\
+    Direct covariance \eqref{eq:omega-entry} and its projection
+    (\S\ref{sec:omega-psd})
+      & \texttt{core/omega.py}: \texttt{cov\_via\_omega}\\
+    Stacked balanced estimator \eqref{eq:omega-balanced}
+      & \texttt{core/omega.py}: \texttt{stacked\_nw\_balanced} (reference for the
+        tests only)\\
+    Studentized null draws, the seam (\S\ref{sec:seam})
+      & \texttt{core/covariance.py}: \texttt{studentized\_null\_draws}\\
+    Romano--Wolf stepdown (\S\ref{sec:stepdown}) and rank sets
+    \eqref{eq:rankset}
+      & \texttt{core/covariance.py}: \texttt{stepdown\_rank\_ci};\newline
+        \texttt{core/pairwise.py}: \texttt{rank\_ci\_from\_rejections}\\
+    Complete procedure
+      & \texttt{core/stepwise\_simulation.py}:\newline
+        \texttt{rank\_ci\_stepwise\_simulation\_pairwise}\\
+    Marginal rank sets
+      & \texttt{core/stepwise.py}: \texttt{rank\_ci\_marginal\_pairwise} (block bootstrap)\\
+    $\tau$-best sets (\S\ref{sec:taubest})
+      & \texttt{core/tau\_best.py}: \texttt{tau\_best\_from\_rank\_ci}
+        (projection), \texttt{tau\_best\_simulation\_pairwise} (MDS)\\
+    Block bootstrap benchmark (\S\ref{par:mbb})
+      & \texttt{core/block\_bootstrap.py}: \texttt{mbb\_indices},
+        \texttt{default\_block\_length}, \texttt{block\_bootstrap\_draws};
+        \texttt{core/stepwise.py}: \texttt{rank\_ci\_stepwise\_pairwise}\\
+    Monte Carlo design \eqref{eq:dgp} and coverage study
+      & \texttt{sim.py}: \texttt{simulate\_panel}, \texttt{coverage\_study}\\
+    Loss panels of the applications
+      & \texttt{data/philly.py}, \texttt{data/ecb.py}, \texttt{data/gjp.py};
+        \texttt{data/mcomp.py}: \texttt{official\_panel};
+        \texttt{data/panel.py}: \texttt{select\_top\_forecasters}\\
+    \bottomrule
+  \end{tabular}
+\end{table}

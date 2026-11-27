@@ -1,0 +1,56 @@
+% ============================================================================
+%  Preamble — LMU thesis template (English), adapted for a Master's thesis.
+%  Merges the LMU layout packages with the mathematical packages our chapters
+%  need. Loaded once from main.tex; document class (book, 12pt) is set there.
+% ============================================================================
+
+% ── LMU layout ───────────────────────────────────────────────────────────────
+\usepackage{a4wide}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\graphicspath{{figures/}{./}}    % figures/ for plots, ./ for the seal
+\usepackage[english]{babel}      % was: \usepackage{german}
+
+% ── mathematics ──────────────────────────────────────────────────────────────
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{bm}
+
+% ── tables, lists, floats ────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{xcolor}
+
+% ── citations, then hyperref last, then todonotes ────────────────────────────
+\usepackage[round]{natbib}
+\usepackage[bookmarks,hidelinks]{hyperref}
+
+% Status notes (scaffolding). For a clean PDF with no notes, change to
+%   \usepackage[disable]{todonotes}
+\usepackage[colorinlistoftodos,textsize=footnotesize,textwidth=2.6cm]{todonotes}
+\newcommand{\towrite}[1]{\todo[color=yellow!70,inline]{\textbf{TO-WRITE:} #1}}
+\newcommand{\stale}[1]{\todo[color=orange!60,inline]{\textbf{STALE:} #1}}
+\newcommand{\port}[1]{\todo[color=green!35,inline]{\textbf{PORT:} #1}}
+
+% ── running headers (from the LMU template) ──────────────────────────────────
+\pagestyle{fancyplain}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries\rightmark}}
+\rhead[\fancyplain{}{\bfseries\leftmark}]{\fancyplain{}{\bfseries\thepage}}
+\cfoot{}
+
+% ── theorem environments ─────────────────────────────────────────────────────
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}[chapter]
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[chapter]

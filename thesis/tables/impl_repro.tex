@@ -1,0 +1,76 @@
+\begin{table}[htb]
+  \centering
+  \caption[Which file produces each result]{Which file produces each result.
+  Notebooks are in \texttt{notebooks/}, scripts in \texttt{scripts/}. Every reported
+  rank set comes from the simulation route of \S\ref{sec:studentized}; the block
+  bootstrap of \S\ref{par:mbb} appears only as a benchmark. All runs use seed $42$
+  unless stated otherwise.}
+  \label{tab:impl-repro}
+  \small
+  \begin{tabular}{p{4.2cm}p{4.6cm}p{5.0cm}}
+    \toprule
+    result & file & settings\\
+    \midrule
+    Tables~\ref{tab:mc-coverage} and~\ref{tab:mc-crossover}; tie design
+    (\S\ref{sec:mc-coverage})
+      & \texttt{make\_thesis\_tables.py}, in the same run as
+        Tables~\ref{tab:app-mc-coverage}--\ref{tab:app-mc-crossover}
+        (designs of \texttt{01\_toydataset})
+      & $R=500$, $B=2000$, $\alpha=0.05$; seeds as in \S\ref{app:impl-details}\\
+    Figure~\ref{fig:mc-crossover}
+      & \texttt{make\_thesis\_figures.py}
+      & the crossover designs and seeds of Table~\ref{tab:mc-crossover}\\
+    NGDP draw diagnostics (\S\ref{sec:mc-mechanism})
+      & \texttt{01\_toydataset}, last section
+      & top-5 NGDP panel, $B=20000$, seed $1$, $\alpha=0.05$\\
+    Tables~\ref{tab:spf-dep-panels}--\ref{tab:spf-dep-diff},
+    Figures~\ref{fig:spf-dep-errors} and~\ref{fig:spf-dep-acf}
+      & \texttt{02\_primary\_analysis}
+      & deterministic\\
+    Table~\ref{tab:spf-indicators}
+      & \texttt{make\_thesis\_tables.py}
+      & direct construction, top-8, $\alpha=0.2$, $B=5000$; MDS in the text\\
+    Table~\ref{tab:ngdp}; $\tau$-best sets for NGDP (\S\ref{sec:apps-spf})
+      & \texttt{make\_thesis\_tables.py}
+      & top-5, $\alpha=0.2$, $B=5000$, MDS and direct; $\tau$-best sets projected
+        from the direct rank sets\\
+    Euro-area results (\S\ref{sec:apps-ecb})
+      & \texttt{make\_thesis\_tables.py}
+      & top-8 with at least $15$ observations, $\alpha=0.2$, $B=5000$, MDS and direct\\
+    GJP results (\S\ref{sec:apps-gjp})
+      & \texttt{gjp/GJP\_CI}
+      & top-20 individuals with at least $60$ questions, years 1--2,
+        $\alpha=0.2$, $B=5000$, direct construction; $\tau$-best set projected from
+        its rank sets; split-half check\\
+    Figure~\ref{fig:gjp-caterpillar}
+      & \texttt{make\_thesis\_figures.py}
+      & as for the GJP results, direct construction\\
+    Table~\ref{tab:mcomp} and every number in \S\ref{sec:apps-mcomp} except the
+    block-bootstrap comparison
+      & \texttt{mcomp/MCOMP\_CI}
+      & $\alpha=0.1$, $B=20000$, direct and MDS; robustness at $\alpha=0.05$ and on
+        block averages\\
+    Figure~\ref{fig:mcomp-caterpillar}
+      & \texttt{make\_thesis\_figures.py}
+      & direct construction, $\alpha=0.1$, $B=20000$\\
+    Table~\ref{tab:threeregimes}
+      & \texttt{make\_thesis\_tables.py}
+      & direct construction, $\alpha=0.1$, $B=20000$; NGDP top-8\\
+    Tables~\ref{tab:app-mc-coverage}--\ref{tab:app-mc-crossover}
+      & \texttt{make\_thesis\_tables.py}
+      & the designs and seeds of \texttt{01\_toydataset}; MDS, direct and block
+        bootstrap; skipped with \texttt{--skip-mc}\\
+    Tables~\ref{tab:app-spf-sets}--\ref{tab:app-gjp}
+      & \texttt{make\_thesis\_tables.py}
+      & as for Table~\ref{tab:spf-indicators}, \S\ref{sec:apps-ecb} and the GJP
+        results; MDS and direct\\
+    Tables~\ref{tab:app-m3-blocks} and~\ref{tab:app-m3-robust}
+      & \texttt{make\_thesis\_tables.py}
+      & direct construction, $\alpha=0.1$ (and $0.05$), $B=20000$\\
+    Block-bootstrap comparisons in Chapter~\ref{ch:apps}
+      & \texttt{make\_thesis\_tables.py} (printed)
+      & block bootstrap with $B=5000$ against the direct construction at the level
+        of each result: $\alpha=0.2$, M3 $\alpha=0.1$\\
+    \bottomrule
+  \end{tabular}
+\end{table}

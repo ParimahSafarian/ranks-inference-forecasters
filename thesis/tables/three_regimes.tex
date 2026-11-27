@@ -1,0 +1,19 @@
+\begin{table}[htb]
+  \centering
+  \caption[The three regimes]{The three applications under the same procedure (direct
+  construction, $\alpha=0.1$ for all three; the SPF and GJP sections use $\alpha=0.2$).
+  Normalized width is the mean rank-CI width divided by $p-1$; ``separated'' is the
+  fraction of units with a non-trivial set; ``exact'' counts units pinned to a single
+  rank.}
+  \label{tab:threeregimes}
+  \small
+  \begin{tabular}{lccccl}
+    \toprule
+    dataset & $p$ & obs & norm.\ width & separated & exact ranks\\
+    \midrule
+    macro (NGDP)           & 8 & 225 & 0.96 & 25\% & 0 \ (\emph{null})\\
+    GJP (geopolitical)     & 20 & 212 & 0.73 & 100\% & 1 \ (\emph{partial})\\
+    M3 (Paris temperature) & 24 & 306 & 0.59 & 100\% & 0 \ (\emph{informative})\\
+    \bottomrule
+  \end{tabular}
+\end{table}

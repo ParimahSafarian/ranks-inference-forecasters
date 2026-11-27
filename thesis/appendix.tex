@@ -1,0 +1,634 @@
+\begin{appendix}
+
+\chapter{Implementation and Reproducibility}
+\label{app:implementation}
+
+All computations are done in Python. The estimators and the inference procedure form a
+small package, \texttt{rankci}; Jupyter notebooks and two scripts call it to run the
+Monte Carlo study and the applications. Below I map the method onto the code
+(\S\ref{app:impl-code}), record the implementation choices the main text leaves open
+(\S\ref{app:impl-details}), list the data (\S\ref{app:impl-data}), the software and the
+tests (\S\ref{app:impl-env}), state which file produces each result
+(\S\ref{app:impl-repro}), and list the known limitations
+(\S\ref{app:impl-limits}).
+
+\section{From the method to the code}
+\label{app:impl-code}
+
+The project directory has six parts. All of them except \texttt{data/} and
+\texttt{thesis/} are under version control.
+\begin{itemize}[nosep,leftmargin=*]
+  \item \texttt{src/rankci/} is the package. Its subpackage \texttt{core/} holds the
+    inference engines, which take a plain $(n\times p)$ array and know nothing about
+    where the data came from. \texttt{data/} holds one loader per data source, and
+    \texttt{sim.py} the Monte Carlo design.
+  \item \texttt{tests/} holds the unit tests (\S\ref{app:impl-tests}).
+  \item \texttt{notebooks/} holds the Monte Carlo study
+    (\texttt{01\_toydataset.ipynb}), the dependence analysis of
+    Appendix~\ref{app:spf-dependence} (\texttt{02\_primary\_analysis.ipynb}), and one
+    folder per application (\texttt{philly/}, \texttt{ecb/}, \texttt{gjp/},
+    \texttt{mcomp/}).
+  \item \texttt{scripts/} holds \texttt{make\_thesis\_figures.py}, which regenerates
+    Figures~\ref{fig:mc-crossover}, \ref{fig:gjp-caterpillar}
+    and~\ref{fig:mcomp-caterpillar}, and \texttt{make\_thesis\_tables.py}, which
+    regenerates Tables~\ref{tab:mc-coverage}, \ref{tab:mc-crossover},
+    \ref{tab:spf-indicators}, \ref{tab:ngdp}
+    and~\ref{tab:threeregimes} and every table of Appendix~\ref{app:additional}, and
+    prints the euro-area results and the NGDP $\tau$-best sets.
+  \item \texttt{thesis/} holds this document and nothing else: its LaTeX sources and
+    the figures and tables that the notebooks and scripts write into it.
+  \item \texttt{data/} holds the raw data (\S\ref{app:impl-data}).
+\end{itemize}
+Table~\ref{tab:impl-code} gives the function that implements each step of the
+pipeline of \S\ref{sec:pipeline}. A complete run takes a loss panel and returns the
+rank confidence sets:
+\begin{verbatim}
+from rankci import rank_ci_stepwise_simulation_pairwise
+out = rank_ci_stepwise_simulation_pairwise(
+    X, alpha=0.1, B=20000, seed=42, covariance="omega")
+out["rank_ci"]   # (p, 2): lower and upper rank of each column
+\end{verbatim}
+Here \texttt{X} is the $(n\times p)$ loss panel with \texttt{NaN} for missing entries,
+and \texttt{covariance="mds"} selects the MDS reconstruction instead. The returned
+dictionary also holds the estimated means, the covariance the draws were taken from,
+the confirmed pairs, the number of stepdown rounds, and two projection diagnostics: the
+distance $\Frob{A-A^{+}}$ between the raw matrix and its projection, and the smallest
+eigenvalue of the raw matrix.
+
+\tabImplCode
+
+\section{Implementation choices}
+\label{app:impl-details}
+
+\paragraph{Input and conventions.} A loss panel is an $(n\times p)$ floating-point
+array whose rows are ordered in time and whose missing entries are \texttt{NaN}. Rank~1
+is the smallest loss. The point estimate $\thetahat_j$ is the mean of column $j$ over
+its own observed rows, whereas the contrast $\Deltahat_{j,k}$ uses only the overlap
+$\Tjk$ (\S\ref{sec:setup}). On an unbalanced panel the order of the $\thetahat_j$ can
+therefore disagree with the signs of the $\Deltahat_{j,k}$; forecaster~65 in
+\S\ref{sec:apps-spf} is an example.
+
+\paragraph{Untestable pairs.} A pair with fewer than two common observations (the
+default \texttt{min\_overlap=2}), or with a zero standard error, is never tested. It
+can never be confirmed, so it can only widen the rank sets of its two units.
+
+\paragraph{Lags on an unbalanced panel.} \texttt{compute\_pairwise} extracts the rows
+on which both $j$ and $k$ are observed and concatenates them before evaluating
+\eqref{eq:nw}. Lag $\tau$ therefore means $\tau$ joint observations apart, not $\tau$
+rows apart. The Andrews bandwidth is computed from the same concatenated series:
+$\hat\rho$ is the least-squares slope of $d_t$ on $d_{t-1}$ with an intercept, clamped
+to $\pm0.97$, and $L=0$ for fewer than three observations. An explicit bandwidth
+overrides the plug-in. Winsorization of the difference series is implemented
+(\texttt{winsor\_pct}) but not used for any reported result.
+
+The direct estimator keeps each difference series on the full row grid, with
+\texttt{NaN} off its support, and sums the cross-products in \eqref{eq:omega-entry} over
+the paired index set $T_{ab}(h)$, with lags counted in rows. Its bandwidths $L_a$ are
+the plug-in values of the concatenated series, and
+$L_{ab}=\min\{L_a,L_b,n_{ab}-1\}$. The two lag conventions agree when every pair's
+overlap is a contiguous block of rows. That holds on a balanced panel and under the
+staggered entry and exit of the Monte Carlo design. When an overlap has gaps, they
+differ by the autocovariance terms that straddle a gap, so the
+diagonal-consistency identity $\Omegahat_{aa}=(\seNW{a})^2$ of
+\S\ref{sec:omega-nesting} is exact for contiguous overlaps only. On the NGDP panel of
+Table~\ref{tab:ngdp}, whose overlaps have gaps, $\sqrt{\Omegahat_{aa}}$ lies between
+$0.95$ and $1.12$ times $\seNW{a}$ before projection.
+
+\paragraph{Studentization.} As described in \S\ref{sec:seam}, the MDS route
+studentizes both the observed and the simulated contrasts by $\seNW{a}$ from
+\texttt{compute\_pairwise}, and the direct route studentizes both by
+$\sqrt{\Omegahat^{+}_{aa}}$, the diagonal of the projected matrix. The direct route's
+draws are therefore exactly unit-variance even when the projection is active, but its
+observed statistics are then divided by a standard error that differs from $\seNW{a}$.
+On the NGDP panel the projection is nearly inert (its Frobenius distance is below
+$0.1\%$ of $\Frob{\Omegahat}$), so $\sqrt{\Omegahat^{+}_{aa}}$ stays between $0.95$ and
+$1.13$ times $\seNW{a}$, as before projection.
+
+\paragraph{Entries of $\Omegahat$.} Each difference series is demeaned on its own
+support. Each Bartlett-weighted cross sum is divided by $n_a n_b$, the product of the
+two support sizes, as in \eqref{eq:omega-entry}; on the diagonal this is $n_a^2$.
+Off-diagonal entries whose pair-of-pairs overlap $n_{ab}$ is below
+\texttt{min\_overlap} are set to zero, while diagonal entries always use the full
+support $T_a$. The assembled matrix is symmetrized before the projection.
+
+\paragraph{Nearest-PSD projection.} Both routes use the same function. It
+symmetrizes the matrix, computes its eigendecomposition with
+\texttt{numpy.linalg.eigh}, sets the negative eigenvalues to zero, reassembles the
+matrix and symmetrizes it again. The result is the Frobenius-nearest PSD matrix
+\citep{higham1988}.
+
+\paragraph{Simulation and stepdown.} The Gaussian draws come from
+\texttt{numpy.random.\allowbreak Generator.\allowbreak multivariate\_normal}. It factors the covariance by a
+singular value decomposition and therefore accepts singular matrices such as $\Sh$,
+for which $\Sh\one=0$. The $B$ draws are taken once and reused in every round. Each
+unordered pair $a=(j,k)$ gives two one-sided hypotheses, $(j,k)$ and $(k,j)$; the
+second uses the observed statistic and the draws with reversed sign. In each round the
+critical value is the empirical $(1-\alpha)$ quantile of the row-wise maximum over the
+active hypotheses (\texttt{numpy.quantile} with linear interpolation), and a
+hypothesis is rejected when its statistic strictly exceeds the critical value.
+
+\paragraph{Block bootstrap benchmark.} \texttt{rank\_ci\_stepwise\_pairwise}
+implements the circular block bootstrap of \S\ref{par:mbb}
+(\texttt{core/block\_bootstrap.py}). Block starts are uniform on $\{1,\dots,n\}$, each
+block covers $\ell$ consecutive rows and continues from row $n$ to row $1$, and
+$\lceil n/\ell\rceil$ blocks are concatenated and truncated to $n$ rows. Every row is
+therefore drawn equally often in expectation; without the wrap-around the first and
+last $\ell-1$ rows would be drawn less often, which shifts the bootstrap contrasts away
+from the observed ones. The block length defaults to $\ell=L+1$ with $L$ the median
+Andrews bandwidth over the pairwise difference series (\texttt{default\_block\_length});
+a user-supplied $L$ gives $\ell=L+1$ directly. The $B$ resamples are drawn once
+(\texttt{block\_bootstrap\_draws}) and passed to the same stepdown function as the
+Gaussian draws. A pair without overlap in a resample does not enter that replication's
+maximum. The marginal and $\tau$-best bootstrap variants draw their resamples in the
+same way.
+
+\paragraph{Marginal and $\tau$-best sets.} Marginal rank sets are computed in a single
+step, with one critical value per unit from the $2(p-1)$ hypotheses that involve it.
+The direct $\tau$-best procedure enumerates the exemption sets $K$ with
+\texttt{itertools.combinations}, so its cost grows with $\binom{p}{\tau-1}$. Like the
+stepdown, it takes the critical value of every round from one set of draws, Gaussian or
+bootstrap.
+
+\paragraph{Random numbers.} Every stochastic step draws from a
+\texttt{numpy.random.Generator} created from an explicit integer seed. The
+applications use seed $42$. In the Monte Carlo study, replication $r$ of design $i$,
+with $i$ counted within each study (the eleven-design grid and the six-design crossover
+sweep), simulates its panel with seed $10^6 i+r$ and its Gaussian draws, as well as its block
+bootstrap resamples, with that seed plus $5\times10^8$. The MDS and direct routes and
+the block bootstrap therefore see identical panels, so the comparison of
+\S\ref{sec:mc-design} is paired, and the draws are independent of the data.
+
+Results are reproducible on a given machine and library version. On another platform
+the linear-algebra library can return a different but equally valid factorization, so
+the same seed can give different draws. Critical values then agree up to Monte Carlo
+error, and a contrast within that error of the critical value can change its decision.
+
+\section{Data}
+\label{app:impl-data}
+
+The data are not part of the code. All are public and available from the sources
+below. The loaders expect them under \texttt{data/} with the file names given here and
+read them unchanged.
+\begin{itemize}[leftmargin=*]
+  \item \emph{U.S.\ SPF} (\S\ref{sec:apps-spf}, Appendix~\ref{app:spf-dependence}).
+    The individual forecasts of the Survey of Professional Forecasters of the Federal
+    Reserve Bank of Philadelphia \citep{croushore2019spf} are in
+    \texttt{philly/SPFmicrodata.xlsx}, sheets \texttt{NGDP}, \texttt{RGDP} and
+    \texttt{UNEMP}. The realizations come from the Bank's Real-Time Data Set for
+    Macroeconomists: \texttt{philly/NOUTPUTQvQd.xlsx} and
+    \texttt{philly/ROUTPUTQvQd.xlsx} (quarterly vintages of nominal and real output)
+    and \texttt{philly/rucQvMd.xlsx} (monthly vintages of the unemployment rate,
+    averaged to quarters). The advance estimate of a quarter is read from the vintage
+    dated one quarter later. \texttt{data.philly.compute\_error\_panel} builds the
+    loss panel at SPF horizon index $3$, and \texttt{select\_top\_forecasters} keeps
+    the forecasters with the most observations among those with at least $20$.
+  \item \emph{Euro-area SPF} (\S\ref{sec:apps-ecb}). The individual replies to the
+    ECB Survey of Professional Forecasters are one CSV file per survey round,
+    \texttt{ecb/individual\_forecasts/YYYYQq.csv} (110 rounds, 1999Q1--2026Q2), read
+    by \texttt{data.ecb.load\_ecb\_spf}. The realizations are Eurostat data as
+    downloaded: the monthly annual rate of change of the HICP (dataset
+    \texttt{prc\_hicp\_manr}, an Excel extract in \texttt{ecb/}) and the chain-linked
+    volume index of euro-area GDP, seasonally and calendar adjusted (dataset
+    \texttt{namq\_10\_gdp}, file \texttt{ecb/namq\_10\_gdp\_EA\_RGDP.xml}). Forecasters
+    need at least $15$ observations.
+  \item \emph{Good Judgment Project} (\S\ref{sec:apps-gjp}). The question file
+    \texttt{gjp/ifps.csv} and the individual forecasts of tournament years~1 and~2,
+    \texttt{gjp/survey\_fcasts.yr1.csv} and \texttt{gjp/survey\_fcasts.yr2.csv}, come
+    from the Harvard Dataverse release \citep{gjpdata2016}, licensed CC0.
+    \texttt{data.gjp.brier\_panel} keeps closed questions with a resolved outcome,
+    drops withdrawn forecasts and orders the questions by close date.
+  \item \emph{M3} (\S\ref{sec:apps-mcomp}). The series, the held-out values and the
+    24 submitted forecasts are the data sets \texttt{M3} and \texttt{M3Forecast} of
+    the R package \texttt{Mcomp}, version~2.8 \citep{hyndman2018mcomp}. Unlike the
+    other sources, these need no manual download.
+    \texttt{data.mcomp.load\_m3\_official} fetches the package archive from CRAN,
+    checks its SHA-256 checksum, reads the two R data files with the Python package
+    \texttt{rdata}, and caches them as one long table,
+    \texttt{mcomp/m3\_official\_long.csv}, with one row per series and horizon and
+    one column per method. \texttt{data.mcomp.official\_panel} builds the Paris panel
+    from the rows whose description is ``Average temperature in Paris'' (series
+    N2784--N2800), keeping the blocks in calendar order.
+\end{itemize}
+The Philadelphia Fed and Eurostat files grow as new data are released, and older
+observations are occasionally corrected. A later download therefore adds observations
+at the end of each panel and can change which forecasters are selected, so results
+computed from it will differ from those reported. The panels used here end
+with the 2025Q1 survey (U.S.\ output), the 2025Q3 survey (U.S.\ unemployment) and
+target year 2025 (euro area). The M3 data cannot drift in this way, because the
+package version is fixed and its checksum is verified.
+
+\section{Software and tests}
+\label{app:impl-env}
+
+The results were computed with the software in Table~\ref{tab:impl-env}. A fresh
+environment is set up from the project directory with
+\begin{verbatim}
+python3.11 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/pip install scipy matplotlib openpyxl rdata jupyter pytest
+\end{verbatim}
+pinning the versions of Table~\ref{tab:impl-env} to match the reported numbers
+exactly. The first run of the M3 loader needs an internet connection.
+
+\tabImplEnv
+
+\subsection{Unit tests}
+\label{app:impl-tests}
+
+The directory \texttt{tests/} contains 65 unit tests, run with
+\texttt{python -m pytest}. All pass in about three seconds. One of them
+downloads the M3 data from CRAN and runs only when the environment variable
+\texttt{RANKCI\_NETWORK} is set; the others run offline.
+Table~\ref{tab:impl-tests} lists what they check. The estimator tests target the
+properties the main text relies on: the bandwidth formula \eqref{eq:andrews}, the
+diagonal-consistency and nesting of $\Omegahat$ (\S\ref{sec:omega-nesting}), the PSD
+statements of \S\ref{sec:caveat}, the agreement of the two constructions on a balanced
+panel (\S\ref{sec:equivalence}), the cancellation of the common shock in the
+simulated panels, the block-bootstrap index construction and the equivalence of the
+bootstrap variance with the Newey--West variance (\S\ref{par:mbb}), and the coverage
+argument for the $\tau$-best projection (\S\ref{sec:taubest}). The marginal rank sets and
+the bootstrap variant of the direct $\tau$-best procedure are covered by a smoke test
+only, which checks that they run on an unbalanced panel and return well-formed sets. The
+Gaussian variant of the direct $\tau$-best procedure is exercised only through the
+notebooks and scripts.
+
+\tabImplTests
+
+\section{Reproducing the results}
+\label{app:impl-repro}
+
+With the data in place and the package installed, the results are reproduced in three
+steps.
+\begin{enumerate}[nosep,leftmargin=*]
+  \item Run the tests: \texttt{python -m pytest}.
+  \item Execute the notebooks of Table~\ref{tab:impl-repro}, for example
+    \texttt{jupyter nbconvert --to notebook --execute --inplace
+    notebooks/01\_toydataset.ipynb}. Each notebook reads the data by paths relative
+    to its own folder, which is where \texttt{nbconvert} runs it.
+    \texttt{02\_primary\_analysis.ipynb} writes its tables and figures directly into
+    \texttt{thesis/tables/} and \texttt{thesis/figures/}.
+  \item Run the two scripts, \texttt{python scripts/make\_thesis\_figures.py} and
+    \texttt{python scripts/make\_thesis\_tables.py}. They write into
+    \texttt{thesis/figures/} and \texttt{thesis/tables/}.
+\end{enumerate}
+Table~\ref{tab:impl-repro} lists the file and the settings behind each result. As a
+check, the crossover sweep of Table~\ref{tab:mc-crossover}, both columns of
+Table~\ref{tab:mcomp}, and Tables~\ref{tab:spf-indicators}, \ref{tab:ngdp}
+and~\ref{tab:threeregimes} were rerun from scratch with these settings, and all
+reproduce every entry. On the machine of Table~\ref{tab:impl-env} the crossover sweep
+takes about twelve seconds. The table script takes about a minute with
+\texttt{--skip-mc}; the Monte Carlo tables of Appendix~\ref{app:additional} add about
+five minutes. On the M3 panel each simulation column takes about a second.
+
+\tabImplRepro
+
+\section{Known limitations of the implementation}
+\label{app:impl-limits}
+
+\begin{itemize}[leftmargin=*]
+  \item \emph{The direct $\tau$-best procedure} is implemented with MDS draws but not
+    with $\Omegahat$. The $\tau$-best set on M3 (\S\ref{sec:apps-mcomp-results}) uses
+    the MDS procedure with $B=20000$; it equals the projection of the direct
+    construction's rank sets. The $\tau$-best sets reported for NGDP and GJP are
+    projections of the direct construction's joint rank sets (\S\ref{sec:taubest}).
+  \item \emph{The two lag conventions} of \S\ref{app:impl-details} differ on overlaps
+    with gaps. Each route is internally consistent, but on such panels the MDS and
+    direct routes do not studentize by exactly the same standard errors. The block
+    bootstrap resamples blocks of consecutive rows, counting lags in rows as the direct
+    estimator does, but takes its block length from the bandwidths of the concatenated
+    overlap series.
+  \item \emph{Cost.} The direct estimator assembles $q(q+1)/2$ entries, each a
+    weighted sum over up to $L_{ab}+1$ lags, in plain Python loops; with $p=24$
+    ($q=276$) this takes about a second.
+\end{itemize}
+
+\chapter{Additional Results}
+\label{app:additional}
+
+The tables below support statements that Chapters~\ref{ch:mc} and~\ref{ch:apps} make
+in the text only. Section~\ref{app:add-mc} completes the Monte Carlo study.
+Sections~\ref{app:add-macro} and~\ref{app:add-gjp} list every rank set of the
+macroeconomic panels and of the tournament. Section~\ref{app:add-m3} gives the
+block-level losses behind the M3 results and two robustness checks. As in the main
+text, every rank set comes from the simulation route; the block bootstrap appears only
+as the benchmark column of the Monte Carlo tables. \texttt{scripts/make\_thesis\_tables.py}
+writes every table here (Table~\ref{tab:impl-repro}).
+
+\section{Monte Carlo: the full design grid}
+\label{app:add-mc}
+
+Table~\ref{tab:mc-coverage} reports eight of the eleven designs of the Monte Carlo study.
+Tables~\ref{tab:app-mc-coverage} and~\ref{tab:app-mc-width} report all eleven, with the
+same designs and seeds, computed with the software of Table~\ref{tab:impl-env}. The three
+designs added here are white-noise idiosyncratic errors ($\rho=0$), a milder imbalance
+of $0.2$, and the tie design of \S\ref{sec:mc-coverage}, $\theta=(0,0,0.8,0.8,1.6)$. All
+other parameters are those of the baseline: $p=5$, $T=200$, $\theta$ equally spaced on
+$[0,1.6]$, $\rho=0.3$ and $\sigma_c=1$. The non-stationary design has five volatility
+episodes of scale $12$, and the realistic design combines them with an imbalance of
+$0.4$.
+
+\paragraph{Coverage.} Joint coverage is one or nearly one ($\ge 0.998$) on every design
+with distinct means except $\rho=0.9$ ($0.966$--$0.968$), well above the nominal $0.95$
+(Table~\ref{tab:app-mc-coverage}). This over-coverage is a property of rank sets, not a
+sign of an inflated critical value. A rank set misses the
+true rank only if the procedure confirms an ordering in the wrong direction. With
+adjacent means $0.4$ apart such an error is rare, and the level $\alpha$ is approached
+only for a pair with equal means. The tie design has two such pairs. A tied pair is
+confidently ordered in $2.0\%$ of its replications under MDS and the block bootstrap
+and in $1.9\%$ under the direct construction, below the nominal $5\%$. The smallest
+marginal coverage, that of the least-well-covered forecaster's own set, is at least
+$0.982$ and equals the joint coverage on every design except $\rho=0.9$. The lowest
+coverage occurs at $\rho=0.9$: $0.968$ for both simulation routes and $0.966$ for the
+block bootstrap. With $T=200$ and strong persistence, kernel
+estimators of the long-run variance are biased downward \citep{andrews1991}, so the
+studentized contrasts are more dispersed than the unit-variance draws they are compared
+with. The block bootstrap inherits the same bias, because its block length reproduces
+the Bartlett weights of these estimators (\S\ref{par:mbb}).
+
+\paragraph{Width, projection and stepdown.} Table~\ref{tab:app-mc-width} gives the
+widths. Without serial dependence ($\rho=0$) the sets are sharpest, with a mean width of
+about $0.11$ under all three routes. The milder imbalance of $0.2$ behaves like the
+imbalance of $0.4$ on a smaller scale: MDS ($0.662$) is marginally sharper than the
+direct construction ($0.678$) and the block bootstrap ($0.682$), which are
+indistinguishable. The projection distance of $\Omegahat$ is at most $0.004$ on the balanced stationary
+designs, essentially zero under imbalance alone, and larger only under
+non-stationarity ($0.034$, and $0.067$ on the realistic design): with a separate
+bandwidth for each difference series the estimator is not guaranteed to be positive
+semi-definite, and heterogeneous volatility makes the bandwidths most heterogeneous
+(\S\ref{sec:caveat}). The MDS matrix is essentially positive semi-definite (distance at most $0.001$) except
+on the realistic design.
+A positive distance does not by itself cost the direct construction anything, because
+its draws are studentized by the diagonal of the projected matrix. The stepdown takes
+about two rounds on the stationary designs ($2.0$--$2.2$ on average) and fewer on the
+non-stationary ones ($1.4$--$1.8$), where the sets are wide and fewer pairs are
+confirmed.
+
+\paragraph{Crossover.} Table~\ref{tab:app-mc-crossover} completes
+Table~\ref{tab:mc-crossover}. Both routes cover in every replication at every crisis
+scale. The projection distance of $\Omegahat$ grows from essentially zero to $0.29$ and
+that of the MDS matrix from $0.001$ to $1.0$, and the direct construction is the
+sharper of the two from scale $6$ on. The two distances refer to different matrices, the
+$q\times q$ covariance of the differences and the $p\times p$ level covariance, so their
+sizes are not directly comparable.
+What matters is whether the draws are studentized consistently with the projected
+matrix. That holds for the direct route and fails for the MDS route
+(\S\ref{sec:mc-mechanism}).
+
+\tabAppMcCoverage
+\tabAppMcWidth
+\tabAppMcCrossover
+
+\section{Macroeconomic panels: all rank sets}
+\label{app:add-macro}
+
+Table~\ref{tab:spf-indicators} summarizes each U.S.\ panel by the number of separated
+forecasters and the set of the forecaster with the smallest mean loss.
+Table~\ref{tab:app-spf-sets} lists all twenty-four sets under both simulation routes.
+\begin{itemize}[leftmargin=*]
+  \item The MDS route returns the trivial $[1,8]$ for every forecaster on all three
+    panels. These panels are as unbalanced as the five-forecaster NGDP panel of
+    Table~\ref{tab:ngdp} (each forecaster reports in about half of the quarters), and
+    the MDS route loses calibration in the same way.
+  \item A small mean loss does not by itself give a good rank set. On NGDP, forecaster~40
+    has the smallest mean loss but a trivial set. The only set with a lower bound above
+    one belongs to forecaster~65, whose mean loss is the second smallest. On
+    unemployment, forecaster~65 again has the second smallest mean loss but is confined
+    to the last three ranks. The contrasts compare forecasters on their shared quarters
+    (\S\ref{sec:setup}), whereas the mean loss also reflects which quarters a forecaster
+    happened to cover.
+  \item The best forecaster on unemployment, forecaster~84, has the set $[1,6]$. It is
+    confirmed better than two rivals and no rival is confirmed better than it, but the
+    other five cannot be ordered against it, so it cannot be named best.
+\end{itemize}
+
+Table~\ref{tab:app-ecb-sets} gives the euro-area sets. The two non-trivial HICP sets are
+those of forecasters~16 ($[1,7]$) and~89 ($[2,8]$). On real GDP growth every set is
+trivial. The two routes agree exactly on both panels. The panels are almost balanced
+(every forecaster covers 26 or 27 of the 27 target years), so the equivalence of
+\S\ref{sec:equivalence} applies.
+
+\tabAppSpfSets
+\tabAppEcbSets
+
+\section{The geopolitical tournament: all rank sets}
+\label{app:add-gjp}
+
+Table~\ref{tab:app-gjp} lists the twenty sets plotted in
+Figure~\ref{fig:gjp-caterpillar}. Three forecasters have a lower bound of one
+(803, 1038 and 1000); they form the $\tau$-best set for $\tau=1$ of
+\S\ref{sec:apps-gjp}. Forecaster~660 is pinned to the last rank, so no other forecaster
+can rank twentieth and every other upper bound is at most $19$. The two routes differ
+by one rank for two forecasters and agree for the rest. The panel behind them is almost
+balanced: each forecaster answered at least 210 of the 212 questions.
+
+The last two columns support the split-half check of \S\ref{sec:apps-gjp}. The questions,
+ordered by closing date, are split into the odd- and the even-numbered ones, and the
+forecasters are ranked by mean Brier score on each half. Forecaster~803 is first and
+forecaster~660 last in both halves. In the middle the two rankings differ by up to eight
+places (forecaster~3631 is fifth on one half and thirteenth on the other), which matches
+the wide sets in the middle of the table.
+
+\tabAppGjp
+
+\section{M3: block-level losses and robustness}
+\label{app:add-m3}
+
+\subsection{Losses by block}
+\label{app:add-m3-blocks}
+
+Table~\ref{tab:app-m3-blocks} gives the sMAPE of six submissions in each block of the
+Paris record: B-J automatic, which has the smallest mean sMAPE; Theta, the overall
+winner of M3; PP-Autocast; and the three methods pinned to the bottom ranks.
+\begin{itemize}[leftmargin=*]
+  \item The leading methods move together. Their sMAPE lies between about $6.5$ and $19$
+    depending on the block, and the hard blocks are hard for all of them. This
+    co-movement is the common shock that cancels in the loss differences.
+  \item Each Flores--Pearce variant forecasts a constant value in twelve of the
+    seventeen blocks (marked with a star), with an sMAPE of $28$--$50$ in those blocks.
+    In the five blocks in which Flores--Pearce2 does not forecast a constant, it is as
+    accurate as the leaders. Flores--Pearce1 is far behind them in every block.
+  \item Robust-Trend has an sMAPE above $25$ in eight blocks and is close to the leaders
+    in the other nine.
+  \item PP-Autocast is close to the leaders in most blocks; the exception is 1953--1960, where its
+    sMAPE is $37.0$ against about $8$. This single block drives the variance of its loss
+    differences and hence the width of its set, $[1,21]$.
+\end{itemize}
+
+\tabAppMThreeBlocks
+
+\subsection{Robustness of the rank sets}
+\label{app:add-m3-robust}
+
+Table~\ref{tab:app-m3-robust} gives the sets behind the two robustness checks of
+\S\ref{sec:apps-mcomp-results}. At $\alpha=0.05$ the same twelve methods keep rank one
+and the same three remain the only methods excluded from the top twenty, although
+Robust-Trend's set widens to $[21,24]$ and PP-Autocast's to $[1,22]$. Most sets widen by at most one rank. The
+largest changes are the lower bounds of AutoBox3 (from $7$ to $3$) and ARARMA (from $13$
+to $9$). On the panel of block averages ($n=17$) fourteen methods keep rank one: Naive2
+and AutoBox1 join the twelve. The sets are not uniformly wider, however. AAM2 and
+AutoBox3, for example, gain a lower bound of $9$. Averaging over the eighteen horizons
+removes the dependence between horizons within a block, and with only seventeen
+observations the standard errors are estimated far less precisely, so the two panels
+need not give nested sets.
+
+\tabAppMThreeRobust
+
+\chapter{Dependence in the SPF Forecast Errors}
+\label{app:spf-dependence}
+
+Here I document the evidence summarized in \S\ref{sec:apps-spf-dependence}.
+\texttt{notebooks/02\_primary\_analysis.ipynb} produces all numbers, tables and figures.
+
+\section{Error panels}
+\label{app:spf-dep-panels}
+
+\paragraph{U.S.\ SPF.} For indicator $v\in\{\text{NGDP},\text{RGDP},\text{UNEMP}\}$,
+forecaster $j$ and survey quarter $t$, the SPF microdata give the forecast of the quarter
+after the survey (SPF horizon index $3$). The realization is the advance estimate: the
+value of the target quarter in the first vintage of the Philadelphia Fed Real-Time Data
+Set that contains it. Monthly unemployment is averaged to quarters. NGDP and RGDP are
+forecast and realized in levels. The error is $e_{t,j}=\text{forecast}-\text{realization}$,
+indexed by survey quarter.
+
+\paragraph{Euro-area SPF.} For HICP inflation and real GDP growth, I use the forecast of
+the current calendar year's average year-on-year rate made in the first-quarter survey
+round, the panel ranked in \S\ref{sec:apps-ecb}. Realizations are taken from
+Eurostat as downloaded, not from real-time vintages. The HICP realization is the mean of
+the twelve monthly year-on-year rates. The real-GDP realization is the mean of the four
+quarterly year-on-year growth rates of the chain-linked volume index. Errors are indexed
+by target year.
+
+\paragraph{Construction.} Each panel is placed on a regular time grid, so that a missing
+survey is a missing row and lag $k$ always means $k$ periods apart. Per-forecaster
+statistics use every forecaster with at least $20$ (U.S.) or $15$ (euro area)
+observations. Statistics on loss differences use the eight best-covered forecasters, the
+same selection as the rank inference. Table~\ref{tab:spf-dep-panels} describes the panels,
+and Figure~\ref{fig:spf-dep-errors} plots the errors.
+
+\tabSpfDepPanels
+\figSpfDepErrors
+
+\section{Serial dependence}
+\label{app:spf-dep-serial}
+
+Because of the gaps, autocorrelations are computed from all pairs of periods $k$ apart in
+which the forecaster reported. Let $\mathcal{P}_k=\{t: e_{t,j}\text{ and }e_{t+k,j}\text{
+observed}\}$ and $n_k=|\mathcal{P}_k|$. Then
+\begin{equation}
+  \hat\rho_k \;=\; \frac{n_k^{-1}\sum_{t\in\mathcal{P}_k}(e_{t,j}-\bar e_j)(e_{t+k,j}-\bar e_j)}
+                     {n^{-1}\sum_{t}(e_{t,j}-\bar e_j)^2},
+\end{equation}
+reported only when $n_k\ge 8$. Under no serial correlation, $\hat\rho_k$ is approximately
+$\Normal(0,1/n_k)$, which gives the band $\pm1.96/\sqrt{n_k}$. Joint whiteness up to lag
+$K$ is tested by the Box--Pierce statistic $Q=\sum_{k=1}^K n_k\hat\rho_k^2$, compared with
+$\chi^2_K$ \citep{boxpierce1970}. I use $K=4$ (one year) for the U.S.\ and $K=2$ for the
+euro area, and compute the same statistics on the losses $e_{t,j}^2$. For the loss
+differences $\dser{jk}_t$, I report the AR(1) coefficient and the Andrews bandwidth that
+the HAC layer actually uses (\S\ref{sec:bandwidth}). Both are computed on the pair's
+overlap, as in the estimator.
+
+Some serial correlation is expected even from efficient forecasters. An optimal $h$-step
+forecast error is at most $(h-1)$-dependent \citep{dieboldmariano1995}. The SPF forecast
+for the quarter after the survey is made before the survey quarter itself is published,
+so it is effectively a two-step forecast, and the errors of consecutive surveys share one
+unobserved quarter. This shared quarter gives an MA(1) structure. The euro-area current-year targets do not
+overlap from one year to the next.
+
+Table~\ref{tab:spf-dep-serial} and Figure~\ref{fig:spf-dep-acf} report the results. The
+U.S.\ errors and losses have a clear first-order autocorrelation and little beyond it. The
+euro-area panels show none, but with $27$ annual observations the white-noise band is
+$\pm0.38$, so only strong persistence could be detected. The loss differences are only
+mildly persistent, and the plug-in bandwidth is correspondingly short.
+
+\tabSpfDepSerial
+\figSpfDepAcf
+
+\section{Cross-sectional dependence}
+\label{app:spf-dep-cross}
+
+For each pair of forecasters, $\hat\rho_{jk}$ is the Pearson correlation of their errors
+over the $\Tjk$ common periods, required to number at least eight. I summarize the
+pairwise correlations in three ways.
+\begin{itemize}[leftmargin=*]
+  \item \emph{Mean correlation} $\bar\rho$ over all pairs, for errors and for losses, and
+    its Spearman analogue $\bar\rho_S$, which is insensitive to the size of extreme
+    periods.
+  \item \emph{Pesaran's CD statistic} for unbalanced panels \citep{pesaran2021},
+    \begin{equation}
+      \mathrm{CD} \;=\; \frac{1}{\sqrt{P}}\sum_{j<k}\sqrt{\Tjk}\,\hat\rho_{jk},
+    \end{equation}
+    over the $P$ valid pairs. It is approximately $\Normal(0,1)$ under cross-sectional
+    independence.
+  \item \emph{The period-effect share} $R^2=1-\sum_{t,j}(e_{t,j}-\bar e_t)^2/
+    \sum_{t,j}(e_{t,j}-\bar e)^2$. Here $\bar e_t$ is the cross-sectional mean of the
+    forecasters reporting in period $t$, and only periods with at least two reports are
+    used. With no common component, $R^2$ is about the number of periods divided by the
+    number of observations, reported in parentheses.
+\end{itemize}
+Table~\ref{tab:spf-dep-cross} reports the results. Every panel rejects cross-sectional
+independence by a wide margin. The Spearman correlations are only slightly lower than
+the Pearson ones, and dropping 2020--21 changes the mean error correlation by at most
+$0.06$ (from $0.76$--$0.97$ to $0.73$--$0.92$). The dependence is therefore a persistent
+feature of the data, not the product of one crisis.
+
+\tabSpfDepCross
+
+\section{The common shock in the loss differences}
+\label{app:spf-dep-diff}
+
+The decomposition \eqref{eq:decomp} treats the common shock as additive in the loss, and
+it then cancels exactly in $\dser{jk}_t$. For squared errors the common component enters
+the error instead. With $e_{t,j}=f_t+u_{t,j}$,
+\begin{equation}
+  \dser{jk}_t \;=\; (u_{t,j}^2-u_{t,k}^2) \;+\; 2f_t\,(u_{t,j}-u_{t,k}).
+  \label{eq:reentry}
+\end{equation}
+The common error cancels from the level of $\dser{jk}_t$ but not from its scale. If the
+idiosyncratic errors are symmetric and independent of $f_t$,
+\begin{equation}
+  \Var\big(\dser{jk}_t\mid f_t\big) \;=\; \Var\big(u_{t,j}^2-u_{t,k}^2\big)
+  \;+\; 4f_t^2\,\Var\big(u_{t,j}-u_{t,k}\big),
+\end{equation}
+which grows with the squared common error. Table~\ref{tab:spf-dep-diff} checks both
+predictions.
+
+Differencing removes most of the loss variance: $82\%$ to essentially $100\%$ on the
+reported panels. What remains moves with the common shock. The squared loss differences
+are rank-correlated with the squared consensus error at $0.63$--$0.89$ (and at
+$0.61$--$0.87$ without 2020--21). Between $94\%$ and $100\%$ of their sum falls in the
+tenth of periods with the largest common error ($73$--$99\%$ without 2020--21). The
+pairwise difference series are therefore heteroskedastic, with variance concentrated in
+a few episodes. On an unbalanced panel, different pairs contain different
+such episodes, which is the source of the inconsistency among pairwise standard errors
+analysed in \S\ref{sec:mc-mechanism}.
+
+\tabSpfDepDiff
+
+\section{Level forecasts, base-year changes and a growth-rate check}
+\label{app:spf-dep-rebasing}
+
+The U.S.\ NGDP and RGDP panels are in levels. When a benchmark revision or base-year
+change is published between the survey and the advance release of its target, the
+forecast and the realization are on different bases. Every forecaster's error then
+shifts by the same amount, typically in two consecutive surveys. These shifts are the
+recurrent spikes of the U.S.\ RGDP panel in Figure~\ref{fig:spf-dep-errors}. They
+inflate both the cross-sectional correlation and the lag-1 autocorrelation, and they add
+episodes of large variance to the loss differences.
+
+As a check, I re-express the same forecasts as annualized quarter-on-quarter growth
+rates. The forecast growth rate is computed from the forecaster's own submitted path, and
+the realized growth rate from the advance vintage of the target. Both levels in each
+ratio are therefore on the same base. These are the rows marked $^\dagger$ in
+Tables~\ref{tab:spf-dep-panels}--\ref{tab:spf-dep-diff}.
+\begin{itemize}[leftmargin=*]
+  \item The rebasing spikes disappear; the only extreme periods left are 2020Q1--Q2.
+  \item Cross-sectional dependence remains strong: the mean error correlation is
+    $0.74$--$0.77$ and the CD statistic exceeds $240$.
+  \item Serial correlation is weaker (median lag-1 autocorrelation about $0.1$) but still
+    flags $29\%$ of forecasters, far above the $5\%$ expected by chance.
+  \item The loss differences remain heteroskedastic in the common shock.
+\end{itemize}
+The conclusions of \S\ref{sec:apps-spf-dependence} therefore do not depend on the level
+artefacts.
+
+\end{appendix}

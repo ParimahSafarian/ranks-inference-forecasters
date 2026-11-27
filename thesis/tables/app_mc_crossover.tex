@@ -1,0 +1,20 @@
+\begin{table}[htb]
+  \centering
+  \caption[Crossover sweep, full results]{The crossover sweep of Table~\ref{tab:mc-crossover} with the coverage and the projection distance of both routes (imbalance $0.4$, five volatility episodes of growing scale, $R=500$, $B=2000$, $\alpha=0.05$).}
+  \label{tab:app-mc-crossover}
+  \small
+  \begin{tabular}{ccccccc}
+    \toprule
+    & \multicolumn{2}{c}{joint coverage} & \multicolumn{2}{c}{mean width} & \multicolumn{2}{c}{projection distance}\\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+    \texttt{vol\_scale} & \textsc{mds} & $\OmegaDirect$ & \textsc{mds} & $\OmegaDirect$ & \textsc{mds} & $\OmegaDirect$\\
+    \midrule
+    1 & 1.000 & 1.000 & 1.023 & 1.060 & 0.001 & 0.000\\
+    3 & 1.000 & 1.000 & 2.009 & 2.039 & 0.007 & 0.001\\
+    6 & 1.000 & 1.000 & 3.035 & 2.936 & 0.050 & 0.013\\
+    10 & 1.000 & 1.000 & 3.600 & 3.394 & 0.174 & 0.049\\
+    16 & 1.000 & 1.000 & 3.879 & 3.619 & 0.420 & 0.134\\
+    24 & 1.000 & 1.000 & 3.968 & 3.713 & 0.996 & 0.291\\
+    \bottomrule
+  \end{tabular}
+\end{table}

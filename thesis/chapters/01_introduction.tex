@@ -1,0 +1,100 @@
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Ranking forecasters with dependent errors}
+\label{sec:intro-motivation}
+
+This thesis constructs simultaneous confidence sets for the ranks of forecasters whose
+losses are correlated over time and across forecasters. Given estimated mean losses and
+an estimate of their covariance, the procedure of \citet{mogstad2024} returns a
+confidence set for every forecaster's rank, such that all true ranks lie in their sets
+with probability at least $1-\alpha$ in large samples. I use that procedure unchanged. My contribution
+is the covariance it needs: an estimate that is robust to serial dependence and that
+does not reintroduce the common shocks all forecasters share.
+
+How that covariance is built changes the answer. I develop two constructions. The first
+reconstructs a covariance of the levels from the pairwise standard errors; the second
+estimates the covariance of the pairwise contrasts directly. On a balanced panel they
+give the same test, exactly under a common bandwidth and asymptotically otherwise. On the
+unbalanced panels typical of forecast surveys they do not.
+For the five best-covered nominal-output forecasters of the U.S.\ Survey of Professional
+Forecasters, the reconstruction returns the uninformative set $[1,5]$ for every
+forecaster, while the direct estimator separates three of them (Table~\ref{tab:ngdp}).
+
+Rankings of forecasters are published routinely: central banks, survey providers and
+the financial press order professional forecasters by average accuracy.%
+\footnote{For example, the Banco Central do Brasil publishes monthly and annual ``Top~5''
+rankings of the institutions in its Focus survey by forecast accuracy \citep{bcbtop5};
+the Lawrence R.~Klein Award goes to the most accurate panelist in the \emph{Blue Chip
+Economic Indicators} survey over the preceding four years \citep{bluechipklein2025}; and
+Bloomberg periodically ranks economists by the accuracy of their forecasts of monthly
+macroeconomic indicators \citep{bloomberg2017}.}
+Such a ranking is a statistic. When the leading forecasters' mean squared errors differ
+by less than the sampling noise, a different sample could reorder them, and the
+forecaster ranked first may be indistinguishable from the one ranked fifth. A confidence
+set for each rank states which orderings the data rule out.
+
+\section{Two kinds of dependence}
+\label{sec:intro-dependence}
+
+Forecast losses are dependent in two ways. They are serially dependent: slow-moving
+regimes, persistent models and overlapping information sets make a forecaster's errors
+persist, so $n$ periods carry less information than $n$ independent observations.
+Ignoring this understates the uncertainty of each mean loss and separates forecasters
+who should not be separated. They are also cross-sectionally dependent: a recession or a
+pandemic raises every forecaster's loss in the same quarter. Treating forecasters as
+independent adds this common variance to every contrast and hides real differences in
+skill.
+
+I handle the two in different places. Serial dependence is a property of each pairwise
+difference series, so I absorb it into a long-run (HAC) standard error of each mean
+difference. Cross-sectional dependence is handled by working with differences of losses,
+in which an additive common shock cancels, and by building the simulation covariance from
+these differences rather than from levels. The difficulty is that the procedure's
+critical value needs a full covariance matrix, not only the pairwise standard errors,
+and that matrix must agree with the pairwise standard errors without bringing the
+common shock back.
+
+\section{Contribution}
+\label{sec:intro-contribution}
+
+The contribution has five parts.
+
+\begin{enumerate}[nosep]
+  \item \emph{Serial dependence} (Chapter~\ref{ch:serial}). I compute a Newey--West
+  standard error for each difference series, with the Bartlett kernel and the
+  \citet{andrews1991} plug-in bandwidth. The bandwidth adapts to each pair's
+  persistence; a fixed-rate rule truncates too early on strongly persistent series,
+  which makes the sets too narrow.
+  \item \emph{Two covariance constructions} (Chapter~\ref{ch:cross}). The first
+  reconstructs a level covariance from the pairwise standard errors by classical
+  multidimensional scaling. The second estimates the covariance of the contrasts
+  directly, with a pairwise-of-pairs version for unbalanced panels. I prove that the two
+  coincide on a balanced panel --- exactly under a common bandwidth, asymptotically
+  otherwise. On an unbalanced panel they estimate different objects, and only the direct
+  estimator targets the covariance of the contrasts the procedure tests.
+  \item \emph{Calibration} (\S\S\ref{sec:mds-psd}--\ref{sec:caveat} and
+  \S\ref{sec:mc-mechanism}). The direct construction studentizes the simulated contrasts
+  by its own diagonal, so they have unit variance. The reconstruction studentizes them by
+  the original standard errors; when these are far from Euclidean, its positive
+  semi-definite repair inflates the simulated variances and hence the critical value.
+  \item \emph{Monte Carlo evidence} (Chapter~\ref{ch:mc}). Both constructions attain
+  nominal joint coverage on every design. They are close to equivalent on balanced
+  stationary panels, and the direct construction is sharper only when imbalance and
+  non-stationarity are combined. A joint block bootstrap serves as a covariance-free
+  benchmark.
+  \item \emph{Applications} (Chapter~\ref{ch:apps}). The procedure separates little among
+  macroeconomic forecasters, finds a top tier among tournament forecasters, and separates
+  competent forecasting methods from systematic failures in the M3 competition without
+  naming a winner. In each case the width of the sets measures how much the data can
+  rank.
+\end{enumerate}
+
+\section{Roadmap}
+\label{sec:intro-roadmap}
+
+Chapter~\ref{ch:background} reviews the related literature and Chapter~\ref{ch:framework}
+sets up the notation. Chapters~\ref{ch:serial}--\ref{ch:downstream} develop the method:
+the standard errors, the two covariance constructions, and the step from covariance to
+rank confidence sets. Chapter~\ref{ch:mc} reports the Monte Carlo evidence,
+Chapter~\ref{ch:apps} the applications, and Chapter~\ref{ch:conclusion} concludes.

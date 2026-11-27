@@ -1,0 +1,26 @@
+\begin{table}[htb]
+  \centering
+  \caption[Monte Carlo coverage, full grid]{Joint coverage and the smallest marginal coverage over the five forecasters, for every design of the Monte Carlo grid ($R=500$, $B=2000$, nominal level $0.95$; identical panels for the three routes). The last row is the rate at which a tied pair of the tie design is confidently ordered, averaged over the two tied pairs and the replications.}
+  \label{tab:app-mc-coverage}
+  \small
+  \begin{tabular}{lcccccc}
+    \toprule
+    & \multicolumn{3}{c}{joint coverage} & \multicolumn{3}{c}{min.\ marginal coverage}\\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    design & \textsc{mds} & $\OmegaDirect$ & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$ & \textsc{cbb}\\
+    \midrule
+    baseline & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    $\rho=0$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    $\rho=0.6$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    $\rho=0.9$ & 0.968 & 0.968 & 0.966 & 0.984 & 0.984 & 0.982\\
+    $\sigma_c=0$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    $\sigma_c=4$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    imbalance $0.2$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    imbalance $0.4$ & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000\\
+    non-stationary & 0.998 & 0.998 & 0.998 & 0.998 & 0.998 & 0.998\\
+    realistic & 0.998 & 1.000 & 1.000 & 0.998 & 1.000 & 1.000\\
+    \midrule
+    ties: false separation & 0.020 & 0.019 & 0.020 & & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,31 @@
+\begin{table}[htb]
+  \centering
+  \caption[Monte Carlo coverage and width]{Joint coverage, mean rank-CI width, and
+  mean projection gap, MDS vs.\ direct-$\OmegaDirect$, with the joint circular block
+  bootstrap (\textsc{cbb}, \S\ref{par:mbb}) as a covariance-free benchmark ($R=500$,
+  $B=2000$, $\alpha=0.05$, identical panels). Coverage is at or above nominal for all three;
+  on the balanced stationary designs they agree closely and the MDS gap is $\approx 0$;
+  the MDS gap becomes non-zero and the width ordering flips only in the
+  \emph{realistic} (non-stationary $+$ unbalanced) design,
+  where the bootstrap sides with $\OmegaDirect$.}
+  \label{tab:mc-coverage}
+  \small
+  \begin{tabular}{lcccccccc}
+    \toprule
+    & \multicolumn{3}{c}{joint coverage} & \multicolumn{3}{c}{mean width}
+    & \multicolumn{2}{c}{projection gap}\\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-9}
+    design & \textsc{mds} & $\OmegaDirect$ & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$
+    & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$\\
+    \midrule
+    baseline & 1.000 & 1.000 & 1.000 & 0.450 & 0.453 & 0.450 & 0.000 & 0.000\\
+    $\rho=0.6$ & 1.000 & 1.000 & 1.000 & 1.011 & 1.018 & 1.006 & 0.000 & 0.001\\
+    $\rho=0.9$ & 0.968 & 0.968 & 0.966 & 1.996 & 2.023 & 1.958 & 0.000 & 0.004\\
+    $\sigma_c=0$ & 1.000 & 1.000 & 1.000 & 0.444 & 0.446 & 0.445 & 0.000 & 0.000\\
+    $\sigma_c=4$ & 1.000 & 1.000 & 1.000 & 0.458 & 0.466 & 0.467 & 0.000 & 0.000\\
+    imbalance $0.4$ & 1.000 & 1.000 & 1.000 & 1.005 & 1.050 & 1.107 & 0.001 & 0.000\\
+    non-stationary & 0.998 & 0.998 & 0.998 & 3.331 & 3.362 & 3.355 & 0.000 & 0.034\\
+    \textbf{realistic} & 0.998 & 1.000 & 1.000 & \textbf{3.765} & \textbf{3.518} & 3.566 & 0.252 & 0.067\\
+    \bottomrule
+  \end{tabular}
+\end{table}

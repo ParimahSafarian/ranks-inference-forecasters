@@ -1,0 +1,65 @@
+\begin{table}[htb]
+  \centering
+  \caption[Unit tests]{The unit tests in \texttt{tests/} (65 in total). All pass; one
+  downloads data and runs only on request.}
+  \label{tab:impl-tests}
+  \small
+  \begin{tabular}{lcp{9.6cm}}
+    \toprule
+    file & tests & what is checked\\
+    \midrule
+    \texttt{test\_bandwidth.py} & 6
+      & $\hat\alpha(1)$ and $L$ match the closed forms \eqref{eq:alpha1} and
+        \eqref{eq:andrews}; white noise gives a small bandwidth; the bandwidth
+        grows with persistence; $\hat\rho$ is clamped; short series get $L=0$.\\
+    \texttt{test\_omega.py} & 11
+      & $\Omegahat_{aa}=(\seNW{a})^2$ on a balanced panel; on an unbalanced panel
+        the diagonal matches an independently coded long-run variance; with a
+        common bandwidth $\Omegahat$ equals the stacked estimator
+        \eqref{eq:omega-balanced} entrywise (nesting); the seam studentizes by
+        $\sqrt{\Omegahat^{+}_{aa}}$; balanced with a common bandwidth is PSD
+        without projection, while the per-series bandwidth may need it
+        (\S\ref{sec:caveat}); the projected matrix is PSD; cross-products use
+        only jointly observed rows; off-diagonal entries are divided by $n_a n_b$;
+        on an unbalanced panel with a common bandwidth the unprojected matrix is
+        PSD \eqref{eq:omega-congruence}; and, by simulation, its off-diagonal entries
+        track the sampling covariance of the difference means.\\
+    \texttt{test\_seam.py} & 5
+      & draw shapes for both constructions; trivial sets $[1,p]$ on i.i.d.\
+        panels with equal means; the two constructions agree on a balanced,
+        well-separated panel; rank sets are well formed; a smaller $\alpha$
+        gives wider sets.\\
+    \texttt{test\_sim.py} & 8
+      & panel shape and means; the common shock cancels in differences; AR(1)
+        stationary variance; staggered entry and exit; true ranks; volatility
+        episodes raise local variance; coverage-study output; joint coverage near
+        nominal on an easy balanced design.\\
+    \texttt{test\_block\_bootstrap.py} & 12
+      & block indices are contiguous runs within $[0,n)$, wrapping around when
+        circular; circular blocks draw every row equally often, non-circular ones
+        under-sample the first and last rows; $\ell=1$ is the i.i.d.\ row bootstrap;
+        $\ell=L+1$ and the cap at $n$; the block length grows with persistence; with
+        $\ell=L+1$ the bootstrap variance of a mean equals the Newey--West variance;
+        pairwise means skip rows without overlap; the stepdown draws once, with
+        non-increasing critical values, and equals the shared stepdown applied to one
+        array of draws; the engines run on an unbalanced panel and are
+        seed-reproducible.\\
+    \texttt{test\_tau\_best.py} & 3
+      & the $\tau$-best projection of \S\ref{sec:taubest} keeps a unit with
+        $U_j<\tau$ (rank set $[1,1]$ at $\tau=2$); for $\tau=1$ it is the set of units
+        whose rank set contains rank one; when every rank set covers the true rank, each
+        $\tau$-best set contains all truly top-$\tau$ units.\\
+    \texttt{test\_gjp.py} & 7
+      & daily-averaged Brier score on hand-computed cases (single binary
+        forecast, carry-forward, multi-category, withdrawals, outcome never
+        assigned); panel shape, row order and filters.\\
+    \texttt{test\_mcomp.py} & 13
+      & the Paris panel of the official M3 forecasts, built from a stored copy of
+        its 306 rows: shape, calendar order, the mean sMAPEs of
+        Table~\ref{tab:mcomp}, methods with missing forecasts dropped; with
+        \texttt{RANKCI\_NETWORK=1}, the download from CRAN reproduces that copy;
+        sMAPE and MASE, and re-implemented forecasting methods that are not used
+        for any reported result.\\
+    \bottomrule
+  \end{tabular}
+\end{table}
