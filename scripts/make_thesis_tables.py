@@ -264,7 +264,7 @@ def tab_three_regimes(out_dir):
     tex = r"""\begin{table}[htb]
   \centering
   \caption[The three regimes]{The three applications under the same procedure (direct
-  construction, $\alpha=0.1$ for all three; the GJP section uses $\alpha=0.2$).
+  construction, $\alpha=0.1$ for all three; the SPF and GJP sections use $\alpha=0.2$).
   Normalized width is the mean rank-CI width divided by $p-1$; ``separated'' is the
   fraction of units with a non-trivial set; ``exact'' counts units pinned to a single
   rank.}
@@ -391,8 +391,9 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
         "tab:app-mc-coverage", "Monte Carlo coverage, full grid",
         r"Joint coverage and the smallest marginal coverage over the five forecasters, "
         r"for every design of the Monte Carlo grid ($R=500$, $B=2000$, nominal level "
-        r"$0.95$; identical panels for the three routes). The last row is the share of "
-        r"replications in which a tied pair of the tie design is confidently ordered.",
+        r"$0.95$; identical panels for the three routes). The last row is the rate at "
+        r"which a tied pair of the tie design is confidently ordered, averaged over the "
+        r"two tied pairs and the replications.",
         "lcccccc",
         r"    & \multicolumn{3}{c}{joint coverage} & \multicolumn{3}{c}{min.\ marginal coverage}\\"
         "\n" r"    \cmidrule(lr){2-4}\cmidrule(lr){5-7}" "\n"
@@ -424,9 +425,10 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
         r"Joint coverage, mean rank-CI width, and" "\n  "
         r"mean projection gap, MDS vs.\ direct-$\OmegaDirect$, with the joint circular block" "\n  "
         r"bootstrap (\textsc{cbb}, \S\ref{par:mbb}) as a covariance-free benchmark ($R=500$," "\n  "
-        r"$B=2000$, $\alpha=0.05$, identical panels). Coverage is nominal for all three; on" "\n  "
-        r"clean panels they agree and the MDS gap is $\approx 0$; the gap and the width" "\n  "
-        r"ordering flip only in the \emph{realistic} (non-stationary $+$ unbalanced) design," "\n  "
+        r"$B=2000$, $\alpha=0.05$, identical panels). Coverage is at or above nominal for all three;" "\n  "
+        r"on the balanced stationary designs they agree closely and the MDS gap is $\approx 0$;" "\n  "
+        r"the MDS gap becomes non-zero and the width ordering flips only in the" "\n  "
+        r"\emph{realistic} (non-stationary $+$ unbalanced) design," "\n  "
         r"where the bootstrap sides with $\OmegaDirect$.",
         "lcccccccc",
         r"    & \multicolumn{3}{c}{joint coverage} & \multicolumn{3}{c}{mean width}" "\n"
@@ -467,10 +469,11 @@ def tab_app_mc(out_dir, R=500, B=2000, alpha=0.05):
   \centering
   \caption[Width crossover]{Width crossover under growing non-stationarity (imbalance
   fixed at $0.4$; larger \texttt{vol\_scale} $=$ bigger crisis episodes). As the MDS
-  projection gap grows, its rank sets overtake the direct construction's.}
+  projection gap grows, its rank sets become wider than the direct construction's;
+  bold marks the narrower route.}
   \label{tab:mc-crossover}
   \small
-  \begin{tabular}{lccccccc}
+  \begin{tabular}{lcccccc}
     \toprule
     \texttt{vol\_scale} & """ + " & ".join(map(str, MC_VOL_GRID)) + r"""\\
     \midrule
