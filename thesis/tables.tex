@@ -1,0 +1,29 @@
+% ============================================================================
+%  All table environments live in tables/. Chapters call \tabMcCoverage, etc.
+%  (mirrors figures.tex; each command pulls in one file from tables/).
+%  Result tables are written by scripts/make_thesis_tables.py and the notebooks in
+%  the code repo (see Appendix A, Table tab:impl-repro); impl_* are hand-written.
+% ============================================================================
+\newcommand{\tabMcCoverage}{\input{tables/mc_coverage}}
+\newcommand{\tabMcCrossover}{\input{tables/mc_crossover}}
+\newcommand{\tabSpfIndicators}{\input{tables/spf_indicators}}
+\newcommand{\tabNgdp}{\input{tables/ngdp}}
+\newcommand{\tabMcomp}{\input{tables/mcomp}}
+\newcommand{\tabThreeRegimes}{\input{tables/three_regimes}}
+\newcommand{\tabSpfDepPanels}{\input{tables/spf_dep_panels}}
+\newcommand{\tabSpfDepSerial}{\input{tables/spf_dep_serial}}
+\newcommand{\tabSpfDepCross}{\input{tables/spf_dep_cross}}
+\newcommand{\tabSpfDepDiff}{\input{tables/spf_dep_diff}}
+\newcommand{\tabImplCode}{\input{tables/impl_code}}
+\newcommand{\tabImplEnv}{\input{tables/impl_env}}
+\newcommand{\tabImplTests}{\input{tables/impl_tests}}
+\newcommand{\tabImplRepro}{\input{tables/impl_repro}}
+% Appendix B (app:additional), all written by scripts/make_thesis_tables.py
+\newcommand{\tabAppMcCoverage}{\input{tables/app_mc_coverage}}
+\newcommand{\tabAppMcWidth}{\input{tables/app_mc_width}}
+\newcommand{\tabAppMcCrossover}{\input{tables/app_mc_crossover}}
+\newcommand{\tabAppSpfSets}{\input{tables/app_spf_sets}}
+\newcommand{\tabAppEcbSets}{\input{tables/app_ecb_sets}}
+\newcommand{\tabAppGjp}{\input{tables/app_gjp}}
+\newcommand{\tabAppMThreeBlocks}{\input{tables/app_m3_blocks}}
+\newcommand{\tabAppMThreeRobust}{\input{tables/app_m3_robust}}

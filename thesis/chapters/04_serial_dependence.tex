@@ -1,0 +1,175 @@
+\chapter{Serial Dependence: the HAC Layer}
+\label{ch:serial}
+
+I absorb serial dependence into the pairwise standard errors $\seNW{jk}$ through a
+long-run (HAC) variance computed on each difference series $d^{jk}_t$. These standard
+errors are the input to the cross-sectional layer of Chapter~\ref{ch:cross}.
+
+\section{The i.i.d.\ benchmark and why it fails}
+\label{sec:iid}
+
+If the difference series were i.i.d., the variance of its mean would be
+\begin{equation}
+  \Var(\dbar^{\,jk}) \;=\; \frac{\Var(d^{jk}_t)}{\njk}
+  \;=\; \frac{\gamma_0}{\njk}.
+\end{equation}
+Macroeconomic forecast errors are serially correlated, however. Slow-moving regimes, a
+forecaster's persistent use of the same model, and overlapping information sets all
+induce autocorrelation, and under positive autocorrelation this formula understates the
+true uncertainty.
+
+\section{The long-run variance}
+\label{sec:lrv}
+
+The long-run variance follows from variance algebra and stationarity; it assumes no
+independence. For any random variables with finite variances,
+\begin{equation}
+  \Var\!\left(\sum_{t=1}^{n} d_t\right)
+  \;=\; \sum_{t=1}^{n}\sum_{s=1}^{n} \Cov(d_t, d_s).
+\end{equation}
+(If the series were i.i.d., $\Cov(d_t,d_s)=0$ for $t\neq s$, only the $n$ diagonal
+terms would survive, and the sum would return $\Var(\dbar)=\gamma_0/n$.) Stationarity
+makes the covariance depend only on the lag,
+\begin{equation}
+  \Cov(d_t, d_s) = \gamma_{|t-s|},
+  \qquad \gamma_\tau = \Cov(d_t, d_{t-\tau}).
+\end{equation}
+The $n\times n$ grid has $n$ cells at lag $0$ and $2(n-\tau)$ cells at lag $\tau$.
+Counting cells gives the exact identity
+\begin{equation}
+  \Var\!\left(\sum_{t=1}^{n} d_t\right)
+  \;=\; n\gamma_0 + 2\sum_{\tau=1}^{n-1}(n-\tau)\,\gamma_\tau .
+\end{equation}
+Dividing by $n$ stabilises the variance of the mean,
+\begin{equation}
+  \Var\!\left(\sqrt{n}\,\dbar\right)
+  \;=\; \gamma_0 + 2\sum_{\tau=1}^{n-1}\!\left(1 - \frac{\tau}{n}\right)\gamma_\tau ,
+\end{equation}
+and, provided the autocovariances are absolutely summable, letting $n\to\infty$ gives the
+\textbf{long-run variance}
+\begin{equation}
+  \lim_{n\to\infty}\Var\!\left(\sqrt{n}\,\dbar\right)
+  \;=\; \gamma_0 + 2\sum_{\tau=1}^{\infty}\gamma_\tau
+  \;=\; \sum_{\tau=-\infty}^{\infty}\gamma_\tau
+  \;\equiv\; V .
+\end{equation}
+Under positive autocorrelation $V > \gamma_0$, so the i.i.d.\ standard error
+$\sqrt{\gamma_0/n}$ understates uncertainty and would falsely separate forecasters.
+
+\section{The Newey--West estimator}
+\label{sec:nw}
+
+The infinite sum cannot be estimated directly. Summing all $n-1$ sample autocovariances
+is useless: with demeaned data and the $1/n$ divisor, $\hat\gamma_0 +
+2\sum_{\tau=1}^{n-1}\hat\gamma_\tau = (\sum_t\tilde d_t)^2/n = 0$ identically. The
+high-lag terms also rest on few products and are very noisy. \citet{neweywest1987}
+truncate at a bandwidth $L_{jk}$ and down-weight with the Bartlett kernel:
+\begin{equation}
+  \hat{V}_{jk}
+  \;=\; \hat{\gamma}^{jk}_0
+  + 2\sum_{\tau=1}^{L_{jk}}
+  \underbrace{\left(1 - \frac{\tau}{L_{jk}+1}\right)}_{\text{Bartlett weight}}
+  \hat{\gamma}^{jk}_\tau ,
+  \label{eq:nw}
+\end{equation}
+where the sample autocovariance of the demeaned series
+$\tilde{d}^{jk}_t = d^{jk}_t - \dbar^{\,jk}$ is
+\begin{equation}
+  \hat{\gamma}^{jk}_\tau
+  \;=\; \frac{1}{\njk}\sum_{t=\tau+1}^{\njk}
+  \tilde{d}^{jk}_t\,\tilde{d}^{jk}_{t-\tau},
+  \qquad \tau = 0,1,\dots,L_{jk}.
+\end{equation}
+Here $t$ runs over the $\njk$ common periods in time order. On an unbalanced panel a
+lag of $\tau$ therefore means $\tau$ common observations apart, and gaps in $\Tjk$ are
+skipped.
+
+The linear taper of the Bartlett weight is what guarantees $\hat{V}_{jk}\ge 0$; a
+sharp-cutoff truncated sum can be negative. A $\max(\cdot,0)$ floor is retained only as
+a numerical guard. I use the Bartlett kernel throughout, for two reasons. It has compact
+support, so it uses only $L_{jk}+1$ sample autocovariances, which matters on the thin,
+unbalanced pair-of-pairs overlaps of Chapter~\ref{ch:cross}. And it lies in the Andrews
+class $\mathcal{K}_2$ of kernels that generate positive semi-definite estimates.
+
+\section{Bandwidth: the Andrews plug-in}
+\label{sec:bandwidth}
+
+The bandwidth $L_{jk}$ sets how many lags enter \eqref{eq:nw}. I choose it by the
+data-dependent plug-in of \citet{andrews1991} rather than by a fixed-rate rule of thumb.
+The plug-in fits an AR(1) approximating model to each difference series and reads the
+optimal bandwidth off its implied persistence. For a scalar AR(1) with autoregressive
+coefficient $\rho$ and innovation variance $\sigma^2$, the
+\citet[eq.~6.4]{andrews1991} persistence functional for the Bartlett ($q=1$) kernel is
+\begin{equation}
+  \alpha(1)
+  \;=\; \frac{4\rho^2\sigma^4/\big[(1-\rho)^6(1+\rho)^2\big]}
+             {\sigma^4/(1-\rho)^4}
+  \;=\; \frac{4\rho^2}{(1-\rho)^2(1+\rho)^2},
+  \label{eq:alpha1}
+\end{equation}
+in which the innovation variance cancels, so the bandwidth depends only on the fitted
+persistence. Estimating $\hat\rho$ by ordinary least squares on the difference series
+and plugging it into the Bartlett rate that is MSE-optimal for $\hat V_{jk}$ under the
+AR(1) approximating model gives
+\begin{equation}
+  \boxed{\;
+  L_{jk} \;=\; \min\!\Big\{\big\lfloor 1.1447\,(\hat\alpha_{jk}(1)\,\njk)^{1/3}\big\rfloor,\;
+  \njk-1 \Big\},
+  \qquad
+  \hat\alpha_{jk}(1)=\frac{4\hat\rho_{jk}^2}{(1-\hat\rho_{jk})^2(1+\hat\rho_{jk})^2}.
+  \;}
+  \label{eq:andrews}
+\end{equation}
+The constant $1.1447$ and the rate $\njk^{1/3}$ are the MSE-optimal Bartlett choices of
+\citet[Thm.~1, eq.~6.2]{andrews1991}, and the AR(1) approximating model is Andrews' own
+(his \S6). \citet{neweywest1994} propose a nonparametric alternative. In Andrews'
+parametrisation the Bartlett weight is $1-\tau/S$, so his bandwidth $S$ corresponds to
+$L_{jk}+1$ in \eqref{eq:nw}. Truncating $S$ to $L_{jk}=\lfloor S\rfloor$ therefore
+rounds the effective bandwidth up, to the conservative side. In practice I clamp
+$\hat\rho$ to $\pm 0.97$ (the functional \eqref{eq:alpha1} diverges as $\rho\to\pm 1$),
+set the bandwidth to $0$ when $\njk<3$, and cap it at $\njk-1$.
+
+Under the moment and mixing conditions of \citet{andrews1991}, if $\hat\rho_{jk}$
+converges to a limit $\rho^*$ with $0<|\rho^*|<1$, then $L_{jk}$ grows at the rate
+$\njk^{1/3}$, so $L_{jk}\to\infty$ and $L_{jk}/\njk\to 0$, and
+$\njk(\seNW{jk})^2$ is consistent for the long-run variance $V_{jk}$. If $\rho^*=0$
+the plug-in stays bounded (in practice $L_{jk}\in\{0,1\}$), and consistency then
+requires the difference series to be serially uncorrelated at every lag.
+
+\paragraph{Why not a fixed-rate rule.} The common rule of thumb
+$L_{jk}=\lfloor 4(\njk/100)^{2/9}\rfloor$ (the pilot lag of \citet{neweywest1994}) does
+not respond to persistence. On strongly persistent series it truncates too early. It
+admits too few lags, so $\hat V_{jk}$ is biased downward, $\seNW{jk}$ is too small, the
+confidence sets are too narrow, and forecasters are falsely separated. That is the
+anti-conservative direction, the one that threatens the coverage guarantee. In the Monte
+Carlo designs of Chapter~\ref{ch:mc} ($n=200$) this happens from $\rho\approx 0.3$ on; at
+$\rho=0.9$ the rule admits $4$ lags where the plug-in selects $29$. On the mildly
+persistent application panels the plug-in in fact selects fewer lags than the rule for
+most pairs. Its advantage is that it adapts per pair, selecting more lags where the
+difference series is more strongly autocorrelated.
+
+\section{Deliverable and the distance-matrix warning}
+\label{sec:se-deliverable}
+
+The HAC standard error of the contrast estimator is
+\begin{equation}
+  \boxed{\;\seNW{jk}
+  \;=\; \sqrt{\frac{\max(\hat{V}_{jk},\,0)}{\njk}}\;}
+  \label{eq:senw}
+\end{equation}
+Collected over all pairs, the standard errors form a symmetric $p\times p$ matrix. Each
+is computed on the difference series $d^{jk}_t$, so it is serially robust and free of
+the common shock. Its square is exactly the input the MDS construction of
+Chapter~\ref{ch:cross} treats as a squared distance.
+
+Collect the squared standard errors into $S^2$ with entries $S^2_{jk} = (\seNW{jk})^2$.
+As a candidate Euclidean distance matrix it has the elementary properties
+\begin{equation}
+  S^2_{jj} = 0, \qquad S^2_{jk} \ge 0, \qquad S^2_{jk} = S^2_{kj}.
+\end{equation}
+It need not, however, be Euclidean-embeddable when the overlaps $\Tjk$ or the bandwidths
+$L_{jk}$ differ across pairs; with a common overlap and a common bandwidth it is
+(Proposition~\ref{prop:equivalence}). As a result, the double-centred matrix
+$-\tfrac12 J S^2 J$ can have negative eigenvalues. It is then generally not positive
+semi-definite and requires a nearest-PSD projection, the issue Chapter~\ref{ch:cross}
+takes up.

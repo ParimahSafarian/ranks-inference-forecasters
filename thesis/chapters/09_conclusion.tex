@@ -1,0 +1,76 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+\section{Summary}
+\label{sec:concl-summary}
+
+This thesis builds the covariance input that the rank-inference procedure of
+\citet{mogstad2024} requires when forecast losses are serially and cross-sectionally
+dependent, and leaves the procedure itself unchanged. Newey--West standard errors on the
+pairwise difference series, with a Bartlett kernel and the \citet{andrews1991}
+data-dependent bandwidth, absorb serial dependence. Two constructions of the simulation
+covariance handle cross-sectional dependence, the common shock that cancels in
+differences. The first reconstructs the level covariance by classical multidimensional
+scaling; it is calibrated by construction and repaired to positive semi-definiteness by
+a nearest-PSD projection. The second, the direct estimator, estimates the difference
+covariance, with a pairwise-of-pairs generalization for unbalanced panels. The two
+coincide on a balanced panel, exactly so under a common bandwidth. On an unbalanced panel
+only the direct estimator targets the covariance of the tested contrasts, because the
+contrasts are then no longer differences of a single vector of means. A calibration
+analysis explains the finite-sample difference between the two: the direct construction
+studentizes by its own diagonal and stays calibrated, while the reconstruction
+studentizes by the original standard errors and can lose calibration once its distance
+matrix is far from Euclidean.
+
+The Monte Carlo study confirms nominal coverage for both constructions and their
+equivalence on clean panels, and isolates the crossover at which the direct construction
+becomes the sharper of the two: non-stationarity combined with imbalance. Real data show
+the same pattern. On the unbalanced U.S.\ SPF panels the reconstruction returns the
+trivial set for every forecaster, while the direct construction separates three of the
+five best-covered NGDP forecasters; on the near-balanced euro-area, tournament and
+competition panels the two agree to within one rank. Across the three applications the
+procedure behaves faithfully over the range of separability. It reports wide, mostly
+trivial rank sets for macro forecasters that can hardly be distinguished, and a
+partially separated top tier for tournament forecasters. For the methods submitted to
+the M3 competition, ranked on the Paris temperature record, it separates twelve
+competent methods from three systematic failures and pins the failures to the last three
+ranks, but it names no winner among the competent twelve. In each case the width of the
+confidence set measures how far the data can rank.
+
+\section{Limitations}
+\label{sec:concl-limitations}
+
+Several caveats bound the results. Participation in the tournament is self-selected: the
+panel consists of the twenty most active volunteers, who chose to take part in these
+questions, so the ranking describes highly engaged forecasters on the questions they
+selected, not a population ranking of skill. The competition panel is balanced, but its
+effective sample is small. Its 306 observations come from seventeen forecast origins,
+and the eighteen horizons forecast from one origin share the same misjudged level, so the
+panel carries far less information than 306 independent comparisons would. The
+tournament and competition applications also exercise mainly the cross-sectional side of
+the construction: tournament questions have only a weak time order (by closing date),
+and the competition's serial dependence is confined to the horizons within a block. In
+all three applications, moreover, the loss differences the HAC layer sees are only mildly
+persistent; the macro panels' serial correlation sits mainly in the individual errors.
+The serial-dependence layer is therefore exercised most fully in simulation. The
+competition application ranks \emph{methods}, as their authors implemented them for M3,
+on a temperature record rather than an economic target. It is included because it shows
+the procedure separating systematic failure from competence, not for its substantive
+content. Its loss, sMAPE, is also not invariant to the origin of the measurement scale,
+so the ranking is specific to the competition's scaling of the record. Finally, the whole
+construction rests on the additive common-shock model; a genuinely multiplicative
+interaction between the common shock and idiosyncratic skill would not cancel cleanly in
+differences.
+
+\section{Future work}
+\label{sec:concl-future}
+
+The most valuable extension is an application that is both informative and rich in both
+kinds of dependence. Financial-analyst earnings forecasts fit this profile: a large,
+unbalanced panel of forecasters repeatedly predicts an evolving target subject to common
+market shocks. Publicly accessible analogues (crowd-sourced estimate platforms, ongoing
+forecasting tournaments) are candidates. On the methodological side, the direct
+construction could be extended to the $\tau$-best simulation variant. The calibration
+diagnostic, namely the projection distance and the dispersion of the studentized draws,
+could be developed into a formal test of when to distrust the reconstruction in favour of
+the direct estimator.

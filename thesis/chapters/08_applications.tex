@@ -1,0 +1,378 @@
+\chapter{Applications}
+\label{ch:apps}
+
+I apply the procedure to three datasets chosen to span the range of separability. It
+separates little among professional macroeconomic forecasters, finds a top tier among
+forecasters in a geopolitical judgement tournament, and separates competent methods from
+systematic failures among those submitted to a forecasting competition. The same
+\texttt{rankci} pipeline runs on all three; only the loss panel changes. In each case
+the width of the confidence sets measures how far the dataset can rank.
+
+\section{Data and common structure}
+\label{sec:apps-setup}
+
+Each application supplies a $(\text{observation}\times\text{unit})$ loss panel. Rows are
+the observation axis (survey quarters, tournament questions, or held-out months), columns
+are the units ranked (forecasters or methods), and each cell is a loss (squared error,
+Brier score, or sMAPE). In every case a shared per-row shock is the common shock that
+cancels in the pairwise differences: a crisis quarter, a question's realized outcome, an
+unusually warm or cold month. The panels differ in balance. The U.S.\ survey panels are
+heavily unbalanced, the euro-area and tournament panels are almost balanced, and the
+competition panel is balanced.
+
+\section{Macroeconomic forecasters: the null regime}
+\label{sec:apps-macro}
+
+Consensus forecasters are genuinely close, and the procedure reports as much: the rank
+sets are wide, most of them the trivial full interval, and no best forecaster can be
+named. This is the \emph{null} regime, and the ``cannot separate'' verdict is the point.
+The data are the U.S.\ Survey of Professional Forecasters (SPF) and its euro-area
+counterpart run by the ECB.
+
+\subsection{Why these panels call for dependence-robust inference}
+\label{sec:apps-spf-dependence}
+
+Both forms of dependence that motivate the construction (\S\ref{sec:intro-dependence})
+are present in these data, and cross-sectional dependence is the dominant one. I measure
+them on exactly the panels ranked below: the one-quarter-ahead forecasts of U.S.\ nominal
+output, real output and the unemployment rate, and the annual-target forecasts of
+euro-area HICP inflation and real GDP growth. The forecast error $e_{t,j}$ is forecast
+minus realization, and the loss is $X_{t,j}=e_{t,j}^2$. Appendix~\ref{app:spf-dependence}
+gives the definitions, the tests and the full results.
+
+\paragraph{Serial dependence.} The U.S.\ errors are serially correlated. The median lag-1
+autocorrelation of an individual forecaster's error is $0.33$--$0.40$, and between $43\%$
+and $63\%$ of forecasters have a lag-1 autocorrelation outside the white-noise band,
+against about $5\%$ that would be flagged with no serial correlation. The losses inherit
+this persistence (median lag-1 autocorrelation $0.23$--$0.39$). The dependence is
+short-lived: beyond the first lag the autocorrelations lie inside the band. Overlapping
+information sets imply this pattern. A one-quarter-ahead forecast is issued before the
+outcome of the current quarter is published, so consecutive errors share an unobserved
+shock even if forecasters are fully efficient. For the euro area, at most 27 annual
+observations per forecaster reveal no serial correlation (2--3\% of forecasters flagged),
+although the test has little power at that length. A standard error that assumed
+independence would therefore understate uncertainty on the U.S.\ panels and risk
+separating forecasters falsely. The HAC layer of Chapter~\ref{ch:serial} costs little
+where the persistence is absent. On the pairwise loss differences the Andrews plug-in
+selects a median of only one to three lags, and a single lag on the euro-area panels.
+
+\paragraph{Cross-sectional dependence.} Cross-sectional dependence is much stronger, and
+it is present in both surveys. The mean correlation between two forecasters' errors is
+$0.76$--$0.97$. Pesaran's CD statistic, approximately standard normal under
+cross-sectional independence, lies between $147$ and $301$. A common period effect
+explains $82$--$98\%$ of the pooled error variance, against $2$--$3\%$ without a common
+component. The dependence is not an artefact of a few crises: rank correlations
+($0.67$--$0.91$) and dropping 2020--21 ($0.73$--$0.92$) leave it essentially unchanged.
+The losses are correlated almost as strongly ($0.65$--$0.97$). This dependence has two
+consequences for the method.
+
+First, the estimated mean losses $\thetahat_j$ are strongly dependent across forecasters.
+Treating forecasters as independent cannot approximate the joint distribution of the
+contrasts that the simulated critical value of Chapter~\ref{ch:downstream} requires. A
+full covariance is needed (Chapter~\ref{ch:cross}).
+
+Second, differencing removes most, but not all, of the common shock. Between $82\%$ and
+essentially $100\%$ of the loss variance cancels in $\dser{jk}_t$, as \eqref{eq:cancel}
+anticipates. For squared errors, however, the common component sits in the error, not
+the loss. Writing $e_{t,j}=f_t+u_{t,j}$ gives
+$\dser{jk}_t=(u_{t,j}^2-u_{t,k}^2)+2f_t(u_{t,j}-u_{t,k})$, so the common error $f_t$
+re-enters as a scale factor. In the data, the size of the loss differences tracks the
+squared consensus error (Spearman correlation $0.63$--$0.89$), and $94$--$100\%$ of the
+sum of squared loss differences falls in the tenth of periods with the largest common
+error. The difference series are therefore strongly heteroskedastic, with their variance
+concentrated in a few episodes.
+
+\paragraph{Implication.} The U.S.\ panels combine this concentrated, non-stationary
+variance with heavy imbalance: the eight best-covered forecasters report in only $52\%$
+of the quarters. Different pairs are therefore compared on different windows, which
+contain different crisis episodes. This is the regime of \S\ref{sec:mc-mechanism}: the
+pairwise standard errors are mutually inconsistent, and a level covariance reconstructed
+from them loses calibration, whereas the direct construction does not.
+Table~\ref{tab:ngdp} below shows exactly this calibration loss on NGDP. The euro-area
+panels are almost balanced ($99\%$ coverage) but short, and the same strong common shock
+dominates them. The HAC and covariance layers of
+Chapters~\ref{ch:serial}--\ref{ch:cross} are built to handle these two forms of
+dependence.
+
+Part of the dependence in the U.S.\ output panels is mechanical. These variables are
+forecast in levels, so benchmark revisions and base-year changes shift every forecaster's
+error at once. Re-expressing the same forecasts as growth rates removes these episodes.
+In growth rates the cross-sectional dependence remains strong (mean correlation
+$0.74$--$0.77$), while the serial dependence is weaker but still well above chance (29\%
+of forecasters flagged); see Appendix~\ref{app:spf-dep-rebasing}.
+
+\subsection{The U.S.\ Survey of Professional Forecasters}
+\label{sec:apps-spf}
+
+Across indicators the SPF is close to a null panel, and no indicator names a best
+forecaster. The SPF, run quarterly since 1968, collects point forecasts of the main U.S.\
+macroeconomic aggregates from professional forecasters. I score each forecaster on each
+target quarter by one-quarter-ahead squared error against the Philadelphia Fed real-time
+data, keep the eight best-covered forecasters, and rank them with the direct
+construction. Table~\ref{tab:spf-indicators} reports the result for three indicators.
+
+The output panels are close to null. On real output only two sets drop a single end
+rank. On nominal output three sets are non-trivial, forecaster~65's by two ranks
+($[3,8]$) and two others by a single end rank. Unemployment is the most informative
+panel: the maximum pairwise $t$-statistic reaches $4.0$, and seven of the eight sets are
+non-trivial. Forecaster~65, whose mean loss is the second smallest, is confirmed worse
+than five of its seven rivals on their shared quarters and confined to the bottom three
+($[6,8]$). Four of the other sets exclude only the last rank, however, and six
+forecasters keep rank one in their set.
+
+The MDS route returns the trivial $[1,8]$ for every forecaster on all three panels, the
+calibration failure that the NGDP panel below makes visible. The block bootstrap
+benchmark (\S\ref{par:mbb}) returns the same sets on real output and unemployment; on
+nominal output it is wider by one rank for two forecasters ($[2,8]$ for forecaster~65,
+and the trivial $[1,8]$ for forecaster~433). Table~\ref{tab:app-spf-sets} in
+Appendix~\ref{app:additional} lists every set.
+
+\tabSpfIndicators
+
+The five best-covered NGDP forecasters show the calibration failure of
+\S\ref{sec:mc-mechanism} on real data. Table~\ref{tab:ngdp} ranks them under both
+simulation routes. The direct construction separates three of the five, whereas the MDS
+route collapses every set to $[1,5]$. On this unbalanced panel the MDS route targets a
+different object (Remark~\ref{rem:unbalanced-targets}), and on this heavy-tailed one it
+also loses calibration: its studentized draws reach a standard deviation of $12$ and a
+two-sided $95\%$ critical value of $24$, against $1.0$ and $2.7$ for the direct
+construction.
+
+\tabNgdp
+
+The clearest statement the SPF supports concerns forecaster~65. The $\tau$-best
+confidence set, projected from the joint rank sets of the direct construction
+(\S\ref{sec:taubest}), makes it precise. Forecaster~65 is excluded from both the top-1
+and the top-2 confidence sets, which contain $\{84, 426, 428, 433\}$; only at $\tau=3$
+does the set widen to all five. Forecaster~65 has the smallest \emph{marginal} mean
+squared error, because its own covered quarters were unusually calm, yet every rival
+beats it on their \emph{shared} quarters. The overlap-based contrasts the procedure uses
+detect this reversal, where a ranking on marginal means would be fooled.
+
+\subsection{The ECB SPF for the euro area}
+\label{sec:apps-ecb}
+
+The ECB SPF for the euro area tells the same story: at these horizons and sample sizes
+professional macroeconomic forecasters can hardly be separated, and no best forecaster
+can be named (Table~\ref{tab:app-ecb-sets}). I rank the eight best-covered forecasters on
+both headline indicators, HICP inflation and real GDP growth, using current-year
+forecasts from the first-quarter round. I use the direct construction at $\alpha=0.2$,
+as for the U.S.\ panels. On real GDP growth every rank set is the trivial $[1,8]$, and
+on HICP inflation only two sets drop a single end rank; the maximum pairwise
+$t$-statistic reaches only $2.39$ (HICP) and $1.89$ (RGDP). The panels are almost
+balanced, and the MDS route and the block bootstrap give the same sets on both
+indicators.
+
+\section{A geopolitical tournament: partial separation}
+\label{sec:apps-gjp}
+
+Among tournament forecasters the ranking is \emph{partially} informative: the best
+forecaster is confidently in the top three of twenty and the worst is pinned to last,
+though the middle remains wide. The Good Judgment Project (GJP) ran a multi-year
+tournament in which volunteer forecasters assigned probabilities to geopolitical
+questions. I score each forecaster on each question by the canonical daily-averaged
+multi-category Brier score. A question's realized outcome is shared by everyone who
+answered it, so it is exactly the common shock of \S\ref{sec:apps-setup}; the GJP
+literature neutralizes it by standardizing Brier scores within question. I pool the
+first two tournament years and restrict to independent individuals and the twenty most
+active (212 questions).
+
+The $\tau$-best confidence set for the single best narrows the field to three of twenty.
+At the same level, $\alpha=0.2$, the block bootstrap gives the same picture: two of the
+twenty sets narrow by one rank, and the normalised width is $0.68$ under the bootstrap
+against $0.69$ for the direct construction. The ranking reflects genuine skill, not luck:
+the mean Brier scores on two disjoint halves of the questions correlate at a Spearman
+$\rho$ of $0.79$ (Figure~\ref{fig:gjp-caterpillar}; Table~\ref{tab:app-gjp} lists every
+set and the split-half ranks).
+
+\figGjpCaterpillar
+
+\section{Forecasting methods on the M3 competition: separating failure from competence}
+\label{sec:apps-mcomp}
+
+Applied to forecasting \emph{methods} rather than people, the procedure separates
+competent methods from systematic failures but names no winner. I do not re-implement
+the methods; I rank the forecasts the competing teams actually submitted to the M3
+competition, scored against the held-out values the organisers published.
+
+\subsection{The data}
+\label{sec:apps-mcomp-data}
+
+The M3 competition \citep{makridakis2000m3} is the third of the large forecasting
+competitions organised by Makridakis and co-authors. It contains 3{,}003 real time
+series: 645 yearly, 756 quarterly, 1{,}428 monthly and 174 of other frequencies, drawn
+from six domains (micro, industry, macro, finance, demographic and other). For each
+series the organisers withheld the final observations (6 for yearly, 8 for quarterly and
+18 for monthly series), and every participating method had to forecast them from the
+remaining history. The organisers then released both the held-out values and the
+forecasts of all 24 submitted methods. I use the copy distributed with the R package
+\texttt{Mcomp} \citep{hyndman2018mcomp}, which also records a short description of each
+series.
+
+Ranking the methods over all 3{,}003 series would pool very different targets: a firm's
+monthly shipments and a country's GDP deflator have little in common. I therefore rank
+the methods on a single indicator, chosen because it should by nature be forecastable:
+the monthly mean air temperature in Paris. M3 contains this record as seventeen monthly
+series (N2784--N2800). On inspection they are consecutive, non-overlapping eight-year
+blocks of one record that runs from 1857 to 1992. In each block the first 78 months
+(January of the first year to June of the seventh) are the estimation window, and the
+last 18 months (July of the seventh year to December of the eighth) are held out. The
+panel thus has $n=17\times 18=306$ rows, one per (block, horizon) and ordered in calendar
+time, and $p=24$ columns, one per method. Every method forecasts every block, so the
+panel is balanced.
+
+The loss is the symmetric absolute percentage error used to score the competition,
+\begin{equation}
+  X_{t,j} \;=\; 200\,\frac{|F_{t,j}-A_t|}{|F_{t,j}|+|A_t|},
+  \label{eq:smape}
+\end{equation}
+where $A_t$ is the realised value and $F_{t,j}$ is method $j$'s forecast. The mean of
+$X_{t,j}$ over $t$ is method $j$'s sMAPE. sMAPE is not invariant to a shift of the
+measurement origin, and temperature in degrees Celsius is close to zero in winter. The
+competition stores the record in a rescaled, strictly positive unit (between $200$ and
+$11{,}400$), and I score on that scale exactly as the competition did.
+
+\subsection{The forecasting methods}
+\label{sec:apps-mcomp-methods}
+
+\citet{makridakis2000m3} group the 24 submissions into six classes.
+Table~\ref{tab:mcomp} gives the class of each method.
+
+\paragraph{Naive and simple methods.} Naive2, the competition's reference benchmark,
+removes the seasonal pattern with a classical multiplicative decomposition, carries the
+last seasonally adjusted value forward, and reapplies the seasonal index $s$:
+$\hat y_{T+h}=(y_T/s_T)\,s_{T+h}$. Single exponential smoothing (Single) updates a level
+$\ell_t=\alpha y_t+(1-\alpha)\ell_{t-1}$ and forecasts $\hat y_{T+h}=\ell_T$ at every
+horizon.
+
+\paragraph{Explicit trend models.} These are mostly members of the exponential
+smoothing family \citep{hyndman2008ets}. Holt's method adds a trend to the level,
+\[
+  \ell_t=\alpha y_t+(1-\alpha)(\ell_{t-1}+b_{t-1}),\qquad
+  b_t=\beta(\ell_t-\ell_{t-1})+(1-\beta)b_{t-1},\qquad
+  \hat y_{T+h}=\ell_T+h\,b_T .
+\]
+The damped-trend method of \citet{gardner1985damped} (Dampen) shrinks the extrapolated
+trend by a factor $\phi\in(0,1)$, $\hat y_{T+h}=\ell_T+(\phi+\phi^2+\dots+\phi^h)\,b_T$,
+so the forecasts level off at long horizons. Holt--Winters (Winter) adds a
+multiplicative seasonal component that is updated together with the level and trend.
+Comb S-H-D is the equal-weight average of Single, Holt and Dampen. As for Naive2, the
+organisers applied these non-seasonal benchmarks to seasonally adjusted data and
+reseasonalised the forecasts. PP-Autocast is a commercial implementation of
+damped-trend smoothing, Robust-Trend extrapolates a robustly estimated trend, and
+Theta-sm is a variant of the Theta method.
+
+\paragraph{Decomposition.} The Theta method \citep{assimakopoulos2000theta}, the overall
+winner of M3, splits the seasonally adjusted series into two ``theta lines'': the
+fitted linear trend ($\theta=0$) and a line with twice the local curvature of the data
+($\theta=2$). It extrapolates the first linearly and the second by simple exponential
+smoothing, and averages the two. \citet{hyndmanbillah2003} show that the result is
+simple exponential smoothing with a drift equal to half the slope of the linear trend.
+
+\paragraph{ARIMA-type models.} B-J automatic, the three AutoBox variants, and AAM1 and
+AAM2 identify and estimate seasonal ARIMA models
+$\phi(L)\Phi(L^{12})(1-L)^d(1-L^{12})^D y_t=\vartheta(L)\Theta(L^{12})\varepsilon_t$
+automatically. They differ in their identification rules and, for AutoBox, in how they
+treat outliers and interventions. ARARMA first applies a long-memory autoregressive
+filter and then fits an ARMA model to the filtered series.
+
+\paragraph{Expert systems.} ForecastPro, ForecastX and SmartFcs are commercial packages
+that choose among exponential smoothing and ARIMA models by rules or in-sample criteria.
+Rule-based forecasting (RBF; \citealp{collopyarmstrong1992}) combines several
+extrapolation methods with weights set by rules that encode features of the series. The
+two Flores--Pearce variants are also rule-based expert systems.
+
+\paragraph{Neural network.} Automat ANN fits an automatically specified feed-forward
+neural network.
+
+The classes differ in how they handle the annual cycle that dominates a temperature
+record. Some model it explicitly (Winter, the seasonal ARIMA models). Some remove it
+before extrapolating and restore it afterwards (Naive2, Single, Holt, Dampen, Theta).
+The results below show that a few methods do not always capture it at all.
+
+\subsection{Dependence in the panel}
+\label{sec:apps-mcomp-dependence}
+
+Both forms of dependence are present. Cross-sectional dependence is weaker than in the
+SPF panels; serial dependence in the loss differences is comparable.
+Across methods, a month that turns out unusually warm or cold penalises every method
+that forecast a typical month; it is the common shock of \eqref{eq:cancel}.
+The mean correlation between two methods' losses is $0.65$. For the median pair, the
+variance of the difference is $65\%$ smaller than the sum of the two marginal variances,
+$1-\Var(\dser{jk}_t)/[\Var(X_{t,j})+\Var(X_{t,k})]=0.65$. Over time, the 18 horizons in
+a block all come from one forecast origin, so the losses at adjacent horizons share the
+same misjudged level. The median lag-1 autocorrelation of a loss difference is $0.13$,
+and the Andrews plug-in selects a median of three lags (range $0$--$19$). Because the
+panel is balanced, \S\ref{sec:equivalence} predicts that the \MDS{} and direct
+$\OmegaDirect$ constructions coincide up to the effect of the per-pair bandwidths
+(Proposition~\ref{prop:equivalence}).
+
+\subsection{Results}
+\label{sec:apps-mcomp-results}
+
+The ranking is informative at both ends. Table~\ref{tab:mcomp} and
+Figure~\ref{fig:mcomp-caterpillar} report the rank confidence sets at $\alpha=0.1$.
+Mean sMAPE ranges from $10.1$ (B-J automatic) to $37.8$ (Flores--Pearce1).
+
+At the top, twelve methods cannot be separated. Their sets all start at rank one, and
+they make up the $\tau$-best confidence set for $\tau=1$: B-J automatic, ForecastPro,
+ForecastX, Dampen, Comb S-H-D, Theta, Winter, Holt, Single, RBF, SmartFcs and
+PP-Autocast. The first eleven of these have mean sMAPEs within one percentage point of
+one another ($10.10$--$11.02$), and on this record the M3 winner, Theta, is statistically
+indistinguishable from simple exponential smoothing. The other twelve methods are
+confidently excluded from first place. For several of them the lower bound is far from
+one: Theta-sm cannot rank better than ninth, and ARARMA no better than thirteenth.
+
+At the bottom, three methods are pinned to the last three ranks: Flores--Pearce2
+($[22,23]$), Robust-Trend ($[22,24]$) and Flores--Pearce1 ($[23,24]$). The block-level
+losses show why (Table~\ref{tab:app-m3-blocks}). Both Flores--Pearce variants issue a
+constant forecast, with no seasonal pattern at all, in twelve of the seventeen blocks.
+Robust-Trend follows the cycle in some blocks but in eight blocks has an sMAPE above
+$25$, more than twice that of the leading methods.
+
+PP-Autocast shows what the procedure does with an unreliable method. Its mean sMAPE
+($12.8$) ranks it nineteenth, yet its set is $[1,21]$, the widest in the table. It is
+close to the leaders in most blocks, but in one block (1953--60) its sMAPE is $37$,
+against about $8$ for the leaders. That single episode makes its loss differences highly
+variable, so the procedure can neither exclude it from first place nor place it in the
+bottom group. A ranking of the point estimates would place it
+nineteenth.
+
+The conclusions do not depend on the covariance construction. The \MDS{} and
+$\OmegaDirect$ sets are identical for all but four methods, which differ by one rank, as
+the balanced-panel equivalence predicts up to the per-pair bandwidths. The normalised
+width is $0.59$ under $\OmegaDirect$ and $0.60$ under \MDS{}. The block bootstrap widens
+four sets by one rank, leaves the membership of the top group and the bottom three
+unchanged, and has width $0.60$.
+
+Tightening $\alpha$ to $0.05$ leaves the picture essentially unchanged: the same twelve methods share rank one,
+and the same three remain the only methods excluded from the top twenty, although
+Robust-Trend's set widens to $[21,24]$ and PP-Autocast's to $[1,22]$. Treating each
+block as a single observation, with its loss averaged over the 18 horizons ($n=17$),
+widens the top group to fourteen methods and raises the best upper bound from $12$ to
+$14$. The two Flores--Pearce variants stay pinned at the bottom, and Robust-Trend moves
+to $[21,24]$ (Table~\ref{tab:app-m3-robust}).
+
+On a single, inherently forecastable indicator, therefore, the procedure does not pick
+out a winner among competent methods, because the data cannot. It does confidently
+separate those methods from methods that fail systematically.
+
+\tabMcomp
+
+\figMcompCaterpillar
+
+\section{One procedure, three regimes}
+\label{sec:apps-threeregimes}
+
+Under the identical pipeline and at a common level $\alpha=0.1$, the normalised width of
+the confidence sets falls from $0.96$ on the macro panel, where only two of the eight
+forecasters are separated, each by a single end rank, to $0.73$ on the tournament and
+$0.59$ on the competition (Table~\ref{tab:threeregimes}). The two informative panels
+are informative in different places. The tournament identifies a top tier and pins one
+forecaster exactly. The competition separates a large competent group from a small group
+of systematic failures, but pins no method exactly. The procedure does not manufacture
+separation that the data cannot support, and it does not hide separation that is
+present. The width of the confidence set is a faithful read of how much the data can
+rank.
+
+\tabThreeRegimes

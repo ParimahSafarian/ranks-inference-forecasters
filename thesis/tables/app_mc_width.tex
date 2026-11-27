@@ -1,0 +1,25 @@
+\begin{table}[htb]
+  \centering
+  \caption[Monte Carlo width and projection distance, full grid]{Mean rank-set width, mean projection distance $\Frob{A-A^{+}}$ of the matrix each simulation route draws from, and mean number of stepdown rounds, for every design of the Monte Carlo grid ($R=500$, $B=2000$, $\alpha=0.05$).}
+  \label{tab:app-mc-width}
+  \small
+  \begin{tabular}{lccccccc}
+    \toprule
+    & \multicolumn{3}{c}{mean width} & \multicolumn{2}{c}{projection distance} & \multicolumn{2}{c}{stepdown rounds}\\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+    design & \textsc{mds} & $\OmegaDirect$ & \textsc{cbb} & \textsc{mds} & $\OmegaDirect$ & \textsc{mds} & $\OmegaDirect$\\
+    \midrule
+    baseline & 0.450 & 0.453 & 0.450 & 0.000 & 0.000 & 2.21 & 2.22\\
+    $\rho=0$ & 0.114 & 0.110 & 0.110 & 0.000 & 0.001 & 2.11 & 2.13\\
+    $\rho=0.6$ & 1.011 & 1.018 & 1.006 & 0.000 & 0.001 & 2.18 & 2.18\\
+    $\rho=0.9$ & 1.996 & 2.023 & 1.958 & 0.000 & 0.004 & 2.13 & 2.14\\
+    $\sigma_c=0$ & 0.444 & 0.446 & 0.445 & 0.000 & 0.000 & 2.20 & 2.20\\
+    $\sigma_c=4$ & 0.458 & 0.466 & 0.467 & 0.000 & 0.000 & 2.20 & 2.21\\
+    imbalance $0.2$ & 0.662 & 0.678 & 0.682 & 0.000 & 0.000 & 2.21 & 2.22\\
+    imbalance $0.4$ & 1.005 & 1.050 & 1.107 & 0.001 & 0.000 & 2.20 & 2.23\\
+    non-stationary & 3.331 & 3.362 & 3.355 & 0.000 & 0.034 & 1.79 & 1.76\\
+    realistic & 3.765 & 3.518 & 3.566 & 0.252 & 0.067 & 1.41 & 1.55\\
+    ties & 0.786 & 0.787 & 0.786 & 0.000 & 0.000 & 2.02 & 2.01\\
+    \bottomrule
+  \end{tabular}
+\end{table}

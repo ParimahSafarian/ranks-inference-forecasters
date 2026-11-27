@@ -1,0 +1,51 @@
+% ── notation macros (unified across the ported fragments) ───────────────────
+% Estimators / hats
+\newcommand{\thetahat}{\hat{\theta}}
+\newcommand{\Deltahat}{\hat{\Delta}}
+\newcommand{\dbar}{\bar{d}}
+\newcommand{\Sigmahat}{\widehat{\Sigma}}
+\newcommand{\Omegahat}{\widehat{\Omega}}
+\newcommand{\Gammahat}{\widehat{\Gamma}}
+\newcommand{\gammahat}{\hat{\gamma}}
+
+% HAC standard error of a contrast; argument is the subscript, e.g. \seNW{jk}
+\newcommand{\seNW}[1]{\mathrm{se}^{\mathrm{NW}}_{#1}}
+\newcommand{\se}{\mathrm{se}}
+
+% Difference series and its support
+\newcommand{\dser}[1]{d^{#1}}                 % difference series d^{jk}
+\newcommand{\supp}[1]{T_{#1}}                 % support / overlap set
+
+% Matrices
+\newcommand{\Jmat}{J}                          % centring matrix I - 11'/p
+\newcommand{\Smat}{S}                          % squared-SE / distance matrix
+\newcommand{\Ident}{I}
+\newcommand{\ones}{\mathbf{1}}
+
+% Operators
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Corr}{Corr}
+\DeclareMathOperator{\MSE}{MSE}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\Real}{\mathbb{R}}
+\newcommand{\Expect}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Normal}{\mathcal{N}}
+
+% Rank-inference objects
+\newcommand{\rankci}[1]{R_{n,#1}}              % rank confidence set, arg = index
+\newcommand{\setbest}{J^{\tau\text{-best}}_n}
+\newcommand{\Frob}[1]{\lVert #1 \rVert_{F}}
+
+% The two constructions (for consistent naming in prose)
+\newcommand{\MDS}{\textsc{mds}}
+\newcommand{\OmegaDirect}{\Omega}
+
+% Aliases matching the ported Report_5 fragment (so its prose drops in verbatim)
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Sh}{\widehat{\Sigma}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\Tjk}{T_{jk}}
+\newcommand{\njk}{n_{jk}}

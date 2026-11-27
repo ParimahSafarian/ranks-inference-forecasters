@@ -1,0 +1,23 @@
+\begin{table}[htb]
+  \centering
+  \caption[Software environment]{Software used for the reported results (Python
+  3.11.5, macOS 14.6, Apple silicon). The \texttt{rankci} package itself requires
+  only NumPy and pandas.}
+  \label{tab:impl-env}
+  \small
+  \begin{tabular}{llp{7.6cm}}
+    \toprule
+    package & version & used for\\
+    \midrule
+    NumPy      & 2.4.6  & arrays, linear algebra, random numbers\\
+    pandas     & 2.3.3  & data loading and panel construction\\
+    openpyxl   & 3.1.5  & reading the Philadelphia Fed and Eurostat Excel files\\
+    rdata      & 1.1.0  & reading the R data files of the M3 forecasts\\
+    SciPy      & 1.17.1 & tests and rank correlations in
+                          Appendix~\ref{app:spf-dependence}\\
+    Matplotlib & 3.11.1 & figures\\
+    ipykernel, nbconvert & 7.3.0, 7.17.1 & executing the notebooks\\
+    pytest     & 9.1.1  & unit tests\\
+    \bottomrule
+  \end{tabular}
+\end{table}

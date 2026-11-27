@@ -1,0 +1,194 @@
+\chapter{Downstream Inference}
+\label{ch:downstream}
+
+Chapters~\ref{ch:serial} and~\ref{ch:cross} deliver the two objects the rank-inference
+procedure consumes: the pairwise HAC standard errors $\seNW{jk}$ and a positive
+semi-definite covariance ($\Sh$ from the MDS reconstruction or $\Omegahat$ from the
+direct construction). The procedure of \citet{mogstad2024}, used unchanged, turns them
+into simultaneous rank confidence sets, and a single implementation serves both
+covariance constructions. The chapter closes with the companion $\tau$-best confidence
+sets.
+
+\section{Simulating the studentized-max null}
+\label{sec:studentized}
+
+Ranking reduces to simultaneous inference on the signs of the contrasts
+$\Delta_{j,k}=\theta_j-\theta_k$ (\S\ref{sec:ranks}). For an ordered pair $(j,k)$ the
+one-sided studentized statistic
+\begin{equation}
+  T_{j,k} \;=\; \frac{\hat{\Delta}_{j,k}}{\seNW{jk}}
+\end{equation}
+is large and positive when $\theta_j>\theta_k$ is well established, that is, when $k$ is
+confirmed better than $j$. Controlling the maximum of these statistics over the family
+of active pairs controls the family-wise error rate of all the sign decisions at once.
+
+The critical value is the $(1-\alpha)$ quantile of that maximum under the null
+$\Delta_{j,k}=0$. I obtain it by simulation: draw $B$ Gaussian vectors from the PSD
+covariance, form the studentized contrast for each active pair, and take the maximum.
+With $A$ the current set of active ordered pairs and $D^{(b)}$ the $b$-th simulated
+contrast vector,
+\begin{equation}
+  T^{(b)} \;=\; \max_{(j,k)\in A}\frac{D^{(b)}_{j,k}}{\seNW{jk}},
+  \qquad
+  \hat{c}(1-\alpha, A) \;=\; \widehat{Q}_{1-\alpha}\big(\{T^{(b)}\}_{b=1}^{B}\big),
+  \label{eq:cv-sim}
+\end{equation}
+where $D^{(b)}_{j,k}=Z^{(b)}_j-Z^{(b)}_k$ for the MDS draw $Z^{(b)}\sim\Normal(0,\Sh)$,
+or $D^{(b)}$ is drawn directly from $\Normal(0,\Omegahat)$ (\S\ref{sec:seam}). A pair is
+confirmed ($\theta_j>\theta_k$, so $k$ ranks above $j$) when
+$\hat{\Delta}_{j,k} - \hat{c}\,\seNW{jk} > 0$.
+
+This simulation is a \emph{parametric bootstrap from the estimated covariance}. It
+approximates the unknown null distribution of the maximum by drawing from the Gaussian
+law the contrast estimators follow asymptotically, with the covariance replaced by its
+estimate $\Sh$ or $\Omegahat$, rather than by resampling the data. The validity of the
+critical value therefore rests on that estimate, which is why Chapters~\ref{ch:serial}
+and~\ref{ch:cross} are devoted to it. I call it the \emph{simulation route} below.
+
+\paragraph{A nonparametric benchmark.}
+\label{par:mbb}
+Resampling the data is another way to obtain the critical value, without any covariance
+estimate. I use the block bootstrap of \citet{kunsch1989} in the circular form of
+\citet{politisromano1992}. Each replication draws one set of $n$ row indices for the
+whole panel, as contiguous blocks of $\ell$ periods that wrap around from the last
+period to the first, so every period is equally likely to be drawn. On the rows of that
+resample where both $j$ and $k$ are observed, it recomputes the contrast
+$\hat{\Delta}^{*}_{j,k}$; then $D^{(b)}_{j,k}=\hat{\Delta}^{*}_{j,k}-\hat{\Delta}_{j,k}$
+takes the place of the Gaussian draw in \eqref{eq:cv-sim}, with $\seNW{jk}$ kept fixed.
+Joint resampling of rows carries the cross-sectional dependence, blocks carry the serial
+dependence, and the missingness pattern travels with the rows. The block bootstrap
+variance of a mean with block length $\ell$ is asymptotically the Bartlett estimator
+with bandwidth $\ell-1$, so I set $\ell=L+1$, with $L$ the median Andrews bandwidth of
+\S\ref{sec:bandwidth} across pairs. Because rows are resampled jointly, one block length
+serves all pairs, while each standard error uses its own pair's bandwidth. The bootstrap
+contrasts are therefore close to unit variance only for pairs whose bandwidth is close to
+the median. The two routes also differ in how cross-sectional dependence enters
+(estimated in $\Omegahat$ or implicit in the resample) and in the shape of the null
+distribution (Gaussian or resampled). The resamples are drawn once and reused in every
+stepdown round, as the Gaussian draws are (\S\ref{sec:seam}). I report the bootstrap as
+a check on the simulation route, not as a competing method, since it bypasses the object
+this thesis estimates.
+
+\section{The Romano--Wolf stepdown}
+\label{sec:stepdown}
+
+A single application of \eqref{eq:cv-sim} over all pairs is valid but conservative. The
+stepdown of \citet{romanowolf2005} recovers power while retaining family-wise control:
+
+\begin{enumerate}[nosep]
+  \item Initialise the active set $A$ to all ordered pairs (with finite $\seNW{jk}$).
+  \item Compute $\hat{c}(1-\alpha, A)$ from \eqref{eq:cv-sim} and reject every active
+        pair with $\hat{\Delta}_{j,k} - \hat{c}\,\seNW{jk} > 0$.
+  \item If any pair was rejected, remove the rejected pairs from $A$ and return to
+        step~2; otherwise stop.
+\end{enumerate}
+
+Because the maximum in \eqref{eq:cv-sim} is taken over a shrinking set, the critical
+values are non-increasing across rounds, and each round can only confirm more pairs.
+This monotone tightening is weakly more powerful than the single-step test and still
+controls the family-wise error rate. At termination the confirmed pairs give the
+better/worse counts $N^+_j,N^-_j$ and hence the rank confidence set
+$\rankci{j}=[\,N^+_j+1,\;p-N^-_j\,]$ of \eqref{eq:rankset}. \emph{Marginal}
+(per-forecaster) confidence sets follow by restricting the family to the $2(p-1)$ pairs
+involving a single $j$ and computing its own critical value. They are tighter, but they
+control coverage for one forecaster at a time rather than jointly.
+
+\section{The covariance seam}
+\label{sec:seam}
+
+The two constructions of Chapter~\ref{ch:cross} live in different spaces. MDS returns a
+$p\times p$ level covariance $\Sh$, from which one draws $Z\in\Real^p$ and then
+differences. The direct construction returns a $q\times q$ difference covariance
+$\Omegahat$, from which one draws $D\in\Real^q$ directly. So that a single stepdown can
+use either, the interface returns not a raw covariance but the \emph{studentized
+difference draws}: a $B\times q$ array $T$ with, for unordered pair $a=(j,k)$,
+\begin{equation}
+  \text{(MDS)}\quad T^{(b)}_a=\frac{Z^{(b)}_j-Z^{(b)}_k}{\seNW{a}},
+  \qquad
+  \text{($\OmegaDirect$)}\quad T^{(b)}_a=\frac{D^{(b)}_a}{\sqrt{\Omegahat_{aa}}},
+  \quad Z^{(b)}\sim\Normal(0,\Sh),\ D^{(b)}\sim\Normal(0,\Omegahat).
+\end{equation}
+The two routes studentize differently. MDS divides by the Newey--West standard error
+$\seNW{a}$, the quantity to which $\Sh$ is calibrated. The direct construction divides
+by $\sqrt{\Omegahat_{aa}}$, the diagonal of the projected matrix it draws from, so its
+draws have unit variance by construction; the same quantity replaces $\seNW{a}$ in its
+observed statistics and in the rejection rule of \S\ref{sec:studentized}. On a
+contiguous support the unprojected diagonal equals $(\seNW{a})^2$
+(\S\ref{sec:omega-nesting}). The projection can only raise it, so the direct route's
+standard errors are at least $\seNW{a}$, and the two coincide when the projection leaves
+the diagonal unchanged. For MDS, by contrast, the projection can change the variance of
+the simulated contrasts, so its draws need not have unit variance. They are weakly
+over-dispersed, since the projection only adds variance; Chapter~\ref{ch:mc} shows the
+consequences.
+
+The draws are taken once, and the stepdown restricts them to the active columns in each
+round. This is both the monotone procedure and cheaper than re-drawing. A single runtime
+switch, $\text{covariance}\in\{\textsc{mds},\OmegaDirect\}$, selects the construction.
+Everything downstream is identical, which keeps the two approaches cleanly comparable
+(Chapter~\ref{ch:mc}) and independently removable.
+
+\section{Confidence sets for the $\tau$-best}
+\label{sec:taubest}
+
+Beyond the rank of each forecaster, one often wants the set of forecasters that could
+belong to the top $\tau$: the $\tau$-\emph{best} confidence set of
+\citet[Section~3.4]{mogstad2024}. A (random) set $\setbest\subseteq\{1,\dots,p\}$ is a
+$\tau$-best confidence set at level $1-\alpha$ if
+\begin{equation}
+  \Prob\big(\text{every truly top-$\tau$ forecaster lies in } \setbest\big)\;\ge\;1-\alpha.
+  \label{eq:tau-coverage}
+\end{equation}
+
+\paragraph{Naive projection.} Given the joint rank confidence sets
+$\rankci{j}=[L_j,U_j]$ from \S\ref{sec:stepdown}, the projection
+\begin{equation}
+  {\setbest}^{\text{naive}}=\{\, j : L_j\le\tau\,\}
+\end{equation}
+inherits coverage \eqref{eq:tau-coverage} by elementary set inclusion. With probability
+at least $1-\alpha$ every $\rankci{j}$ covers its forecaster's true rank $r_j$. On that
+event a truly top-$\tau$ forecaster has $r_j\le\tau$, hence $L_j\le r_j\le\tau$, and so
+lies in ${\setbest}^{\text{naive}}$. Only the lower bound matters: a forecaster whose
+whole set lies within the top $\tau$ ($U_j\le\tau$) is top-$\tau$ for certain on that
+event, and belongs in the set just as much as one whose set straddles $\tau$. The
+projection is conservative in general and comes free with the rank confidence sets.
+
+\paragraph{Direct procedure.} A dedicated test statistic gives a sharper set. For
+forecaster $j$,
+\begin{equation}
+  T_{n,j}\;=\;\min_{K\in\mathcal{K}}\;\max_{k\notin K\cup\{j\}}\;
+  \frac{\hat{\Delta}_{j,k}}{\seNW{jk}},
+  \qquad
+  \mathcal{K}=\big\{K\subseteq\{1,\dots,p\}:\;|K|=\tau-1\big\},
+  \label{eq:tau-stat}
+\end{equation}
+where $K$ exempts $\tau-1$ forecasters (candidates for the other top slots), the inner
+$\max$ is the strongest evidence that some non-exempt $k$ beats $j$, and the outer
+$\min$ grants $j$ the most favourable exemption. A large $T_{n,j}$ means that no matter
+which $\tau-1$ forecasters are granted the other top slots, someone outside is still
+substantially better than $j$, so $j$ is unlikely to be top-$\tau$.
+
+\begin{remark}[Sign convention]
+\citet{mogstad2024} write the procedure for ``larger $\theta$ is better'' (e.g.\
+achievement scores). For MSE-style losses ``smaller $\theta$ is better'', so the
+procedure is applied to $-\theta$. By their Remark~3.11 this flips the numerator:
+$(\hat\theta_k-\hat\theta_j)/\seNW{jk}$ becomes
+$\hat{\Delta}_{j,k}/\seNW{jk}$ as in \eqref{eq:tau-stat}. Large positive values still
+mean ``$j$ has a much larger loss than some non-exempt $k$''.
+\end{remark}
+
+\paragraph{Critical value and stepwise testing.} The null $H_j$ (``$j$ is among the top
+$\tau$'') is rejected, and $j$ excluded from $\setbest$, when
+$T_{n,j}>\hat{c}_n(1-\alpha,I_n)$. The critical value is the largest per-exemption
+quantile,
+\begin{equation}
+  \hat{c}_n(1-\alpha,I_n)=\max_{K\in\mathcal{K}}
+  \widehat{Q}_{1-\alpha}\!\Big(\big\{\,\textstyle\max_{j\in I_n}\max_{k\notin K\cup\{j\}}
+  D^{(b)}_{j,k}/\seNW{jk}\,\big\}_{b}\Big),
+\end{equation}
+where the null contrasts $D^{(b)}$ are drawn from the MDS covariance as in
+\S\ref{sec:studentized}. The set is built by the same stepdown logic as
+\S\ref{sec:stepdown}: initialise $I_n=\{1,\dots,p\}$, exclude every $j$ with
+$T_{n,j}>\hat{c}_n$, shrink $I_n$, and repeat until no further exclusions; the survivors
+are $\setbest$. As before, removing excluded forecasters cannot raise the critical value,
+so the stepwise refinement is weakly more powerful than a single step. The reported
+results use the projection, not the direct procedure.

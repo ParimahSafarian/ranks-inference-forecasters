@@ -1,9 +1,10 @@
-# Top-level data, reports, reference-material, and thesis dirs only (the
+# Top-level data, reports and reference-material dirs only (the
 # package's `src/rankci/data/` subpackage is source code, not raw data).
 /data/
 /Reports/
 /Resources/
-/thesis/
+# Thesis sources are tracked; the compiled draft is a build output.
+/thesis/thesis_draft.pdf
 .venv/
 __pycache__/
 *.ipynb_checkpoints

@@ -1,0 +1,19 @@
+\begin{table}[htb]
+  \centering
+  \caption[SPF rank inference across indicators]{U.S.\ SPF rank inference across
+  indicators (top-8 forecasters by coverage, one-quarter-ahead squared error, direct
+  construction, $\alpha=0.2$, $B=5000$). No indicator names a best forecaster.
+  ``Separated'' counts forecasters whose rank set is non-trivial; the last column is the
+  rank set of the forecaster with the smallest mean loss.}
+  \label{tab:spf-indicators}
+  \small
+  \begin{tabular}{lccccc}
+    \toprule
+    indicator & $p$ & quarters & $\max|t|$ & separated & best-forecaster CI\\
+    \midrule
+    NGDP (nominal output)      & 8 & 225 & 2.82 & 3 & $[1,8]$\\
+    RGDP (real output)         & 8 & 225 & 2.80 & 2 & $[1,8]$\\
+    UNEMP (unemployment rate)  & 8 & 228 & 4.04 & 7 & $[1,6]$\\
+    \bottomrule
+  \end{tabular}
+\end{table}

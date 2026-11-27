@@ -1,0 +1,472 @@
+\chapter{Cross-Sectional Dependence}
+\label{ch:cross}
+
+The serial-dependence layer of Chapter~\ref{ch:serial} delivers the pairwise standard
+errors $\seNW{jk}$, but the simulation-based critical value needs a full covariance of
+the contrasts. I build that covariance in two ways: by reconstructing a level covariance
+from the pairwise standard errors (Approach~1, classical multidimensional scaling), and
+by estimating the covariance of the differences directly (Approach~2, the object the
+procedure uses). I prove that the two coincide on a balanced panel, exactly in finite
+samples under a common bandwidth and asymptotically otherwise. On an unbalanced panel
+they target different objects, and only the direct construction is the covariance the
+procedure needs.
+
+\section{The calibration condition}
+\label{sec:calibration}
+
+The critical value comes from simulating the joint distribution of the studentized
+contrasts under the null $\Delta_{j,k}=0$. The simulation draws a Gaussian vector
+$Z\sim\Normal(0,\Sh)$ and forms $(Z_j - Z_k)/\seNW{jk}$ for each pair. For these draws
+to share the distribution of the real studentized statistics
+$T_{jk} = (\hat{\Delta}_{j,k}-\Delta_{j,k})/\seNW{jk}$, the variance of the simulated
+numerator must equal the squared denominator:
+\begin{equation}
+  \Var(Z_j - Z_k)
+  \;=\; \Sh_{jj} + \Sh_{kk} - 2\Sh_{jk}
+  \;\stackrel{!}{=}\; \big(\seNW{jk}\big)^2
+  \qquad \forall\, j\neq k.
+  \label{eq:calib}
+\end{equation}
+So I need a covariance matrix $\Sh$ that satisfies \eqref{eq:calib}. The naive approach,
+estimating $\Sh$ from level variances, fails on an unbalanced panel. The level means are
+taken over each forecaster's own dates, so their differences are not the overlap
+contrasts $\hat\Delta_{j,k}$, and the common-shock term $c_t$ of \eqref{eq:decomp} no
+longer cancels in them. Rather than estimate $\Sh$ and hope that \eqref{eq:calib} holds,
+Approach~1 imposes \eqref{eq:calib} and backs out $\Sh$; Approach~2 sidesteps the level
+covariance entirely.
+
+\section{Approach 1: the MDS reconstruction}
+\label{sec:mds}
+
+The left-hand side of \eqref{eq:calib} has the form of a squared Euclidean distance. If
+$\Sh$ is an inner-product (Gram) matrix, i.e.\ $\Sh_{jk} = \langle v_j,
+v_k\rangle$ for some configuration $v_1,\dots,v_p$, then
+\begin{equation}
+  \|v_j - v_k\|^2
+  = \langle v_j,v_j\rangle + \langle v_k,v_k\rangle - 2\langle v_j,v_k\rangle
+  = \Sh_{jj} + \Sh_{kk} - 2\Sh_{jk}.
+\end{equation}
+A Gram matrix $G = V V^\top$ is positive semi-definite and encodes an inner-product
+space. So \eqref{eq:calib} asks for a Gram matrix whose induced squared distances equal
+$S^2_{jk} = (\seNW{jk})^2$. This is the \emph{classical multidimensional scaling}
+problem: recover a point configuration from its pairwise distances. It has a
+closed-form solution (Torgerson's classical scaling), and Schoenberg's theorem
+characterises when that solution is valid.
+
+\subsection{The double-centring formula}
+
+Let $S^2$ be the $(p\times p)$ matrix of squared difference standard errors (zero
+diagonal), and let $J \equiv I_p - \tfrac{1}{p}\,\one\one^\top$ be the centring matrix.
+The construction is
+\begin{equation}
+  \boxed{\;\Sh \;=\; -\tfrac{1}{2}\, J\, S^2\, J.\;}
+  \label{eq:doublecentre}
+\end{equation}
+
+\paragraph{Calibration holds by construction.}
+Double-centring acts entrywise as
+\begin{equation}
+  \Sh_{jk}
+  = -\tfrac12\big(S^2_{jk} - \bar{s}_{j\cdot} - \bar{s}_{\cdot k}
+      + \bar{s}_{\cdot\cdot}\big),
+\end{equation}
+with row mean $\bar{s}_{j\cdot}$, column mean $\bar{s}_{\cdot k}$, and grand mean
+$\bar{s}_{\cdot\cdot}$. Using $S^2_{jj}=0$ and symmetry,
+$\Sh_{jj}=\bar{s}_{j\cdot}-\tfrac12\bar{s}_{\cdot\cdot}$ and
+$\Sh_{kk}=\bar{s}_{k\cdot}-\tfrac12\bar{s}_{\cdot\cdot}$. In the contrast, the row,
+column, and grand means all cancel:
+\begin{align}
+  \Sh_{jj} + \Sh_{kk} - 2\Sh_{jk}
+  &= \Big(\bar{s}_{j\cdot} - \tfrac12\bar{s}_{\cdot\cdot}\Big)
+   + \Big(\bar{s}_{k\cdot} - \tfrac12\bar{s}_{\cdot\cdot}\Big)
+   + \big(S^2_{jk} - \bar{s}_{j\cdot} - \bar{s}_{\cdot k}
+          + \bar{s}_{\cdot\cdot}\big) \notag\\[2pt]
+  &= S^2_{jk}. \qquad\checkmark
+\end{align}
+The identity holds for any symmetric, zero-diagonal $S^2$, whether or not it is
+Euclidean-embeddable. Calibration is therefore guaranteed, not estimated. Because only
+the difference standard errors enter, the common shock never enters $\Sh$. The diagonal
+$\Sh_{jj}$ is defined by the very contrasts the procedure tests, not by tail-dominated
+marginal variances.
+
+\subsection{Why $\Sh$ is rank-deficient (and why that is correct)}
+
+Because $J\one = 0$, it follows that $\Sh\,\one = -\tfrac12\, J S^2 (J\one) = 0$, so the
+constant vector $\one$ lies in the null space of $\Sh$: the matrix is singular by
+construction. In probability terms, taking $w=\one$ in $\Var(w^\top Z)=w^\top\Sh\,w$
+gives $\Var(Z_1+\dots+Z_p)=\one^\top\Sh\,\one=0$. The overall level is pinned to zero,
+and $Z$ never moves along the all-ones direction. This is the statement that only
+contrasts are identified. Because $\Sh$ is built from differences, every quantity the
+method uses is blind to a common shift $Z_j \mapsto Z_j + c$. A full-rank $\Sh$ would be
+wrong here: it would assign variance to a level the ranking can never observe.
+Simulating from a singular PSD matrix is standard (draw on the non-zero
+eigen-directions), and the procedure never inverts $\Sh$, so the singularity costs
+nothing.
+
+\subsection{The nearest-PSD projection}
+\label{sec:mds-psd}
+
+Double-centring always delivers calibration, but $\Sh$ is a valid covariance only if it
+is positive semi-definite. By Schoenberg's theorem, $-\tfrac12 J S^2 J$ is PSD if and
+only if $S^2$ is Euclidean-embeddable. The entries of $S^2$ are estimated pairwise, each
+on its own overlap and bandwidth, so embeddability generally fails and $\Sh$ typically
+has a few small negative eigenvalues. The repair is the nearest-PSD projection
+\citep{higham1988}: eigendecompose $\Sh = Q\Lambda Q^\top$, clip
+$\Lambda^{+} = \max(\Lambda, 0)$, and reassemble $\Sh^{+} = Q\Lambda^{+}Q^\top$. The
+result is the closest PSD matrix to $\Sh$ in Frobenius norm. If $S^2$ is embeddable, the
+clip does nothing.
+
+\begin{remark}[Calibration vs.\ PSD-ness]
+The clip perturbs calibration: the identity $\Sh_{jj}+\Sh_{kk}-2\Sh_{jk} = S^2_{jk}$
+holds exactly only for the unprojected $\Sh$. Eigenvalue clipping trades a small
+calibration error for validity. Because $\Sh^{+}-\Sh$ is positive semi-definite with
+largest eigenvalue $|\lambda_{\min}(\Sh)|$, the clip can only inflate the simulated
+contrast variances, by at most $2|\lambda_{\min}|$, which makes the critical value
+conservative. The clipped eigenvalues grow with the imbalance of the panel and with the
+heterogeneity of the bandwidths; on a mildly unbalanced panel with similar persistences
+they are approximately zero. The Frobenius norm of the repair,
+$\Frob{\Sh - \Sh^{+}}$, serves as a robustness diagnostic.
+\end{remark}
+
+\subsection{Non-uniqueness of the calibrated covariance}
+\label{sec:nonuniqueness}
+
+The double-centred matrix is not the only covariance that satisfies \eqref{eq:calib}.
+Condition \eqref{eq:calib} imposes $\binom{p}{2}$ equations on the $\binom{p}{2}+p$ free
+entries of a symmetric $\Sigma$, so its solution set is a $p$-dimensional affine family,
+of which $-\tfrac12 J S^2 J$ is one canonical member. If $\Sigma$ satisfies
+\eqref{eq:calib}, so does
+\begin{equation}
+  \Sigma' = \Sigma + a\one^\top + \one a^\top
+\end{equation}
+for any $a\in\Real^p$, since $a\one^\top + \one a^\top$ contributes
+$2a_j+2a_k-2a_j-2a_k=0$ to every difference variance. Adding such a term reparametrises
+the unobservable levels, to which all contrasts are invariant. Within this family the
+double-centred solution is the unique \emph{mean-centred} representative
+($\one^\top\Sh=0$), the gauge that places the recovered configuration at the origin.
+The ambiguity is harmless. The simulation uses only the contrasts $\{Z_j-Z_k\}$, whose
+joint distribution is the same across the family. And the mean-centred representative is
+the right input to the projection, because it parks the unidentified level in the null
+space instead of smearing it across the spectrum (a generic shift can drive eigenvalues
+negative).
+
+\section{Approach 2: the direct difference covariance $\OmegaDirect$}
+\label{sec:omega}
+
+Approach~1 reconstructs a $p$-dimensional level covariance and differences it.
+Approach~2 models directly the object the procedure uses: the covariance of the
+$q=\binom{p}{2}$ difference-mean estimators.
+
+\subsection{The balanced case}
+\label{sec:omega-balanced}
+
+Stack the difference series into a $q$-vector process $d_t = (d^a_t)_{a=1}^{q}$, with
+$a=(j,k)$, $j<k$, and $d^a_t = X_{t,j}-X_{t,k}$. When the panel is balanced, so that
+every difference is observed on the same $n$ dates, a single multivariate Newey--West
+estimator gives the covariance of the difference-mean vector
+$\hat\Delta = \tfrac1n\sum_t d_t$ in one pass:
+\begin{equation}
+  \Omegahat \;=\; \hat S/n,
+  \qquad
+  \hat S = \Gammahat_0 + \sum_{h=1}^{L} w_h\big(\Gammahat_h + \Gammahat_h^\top\big),
+  \qquad
+  \Gammahat_h = \tfrac1n\sum_t \tilde d_t\,\tilde d_{t-h}^\top,
+  \label{eq:omega-balanced}
+\end{equation}
+where $\tilde d_t = d_t - \bar d$ and $w_h$ is the Bartlett weight of
+Chapter~\ref{ch:serial}. The estimator is positive semi-definite by construction
+(Bartlett lies in the Andrews class $\mathcal{K}_2$). Calibration is automatic, since its
+diagonal is the univariate long-run variance of each $d^a$. The common shock never
+enters, since the estimator operates on differences. Its theoretical home is
+\citet{andrews1991}, which is natively multivariate.
+
+\subsection{The unbalanced case: the pairwise-of-pairs estimator}
+\label{sec:omega-unbal}
+
+The balanced construction requires every difference series to be observed on the same
+dates. Under staggered entry and exit the common window $\bigcap_a T_a$ is small or
+empty, and \eqref{eq:omega-balanced} is infeasible. I instead estimate each entry of
+$\OmegaDirect$ on the dates its two difference series share (the pairwise-of-pairs
+route). Write $d^a_t$ on its support $T_a = T_j\cap T_k$ with $n_a=|T_a|$. The entry is
+the sampling covariance of two difference-mean estimators,
+$\Omega_{ab}=\Cov(\hat\Delta_a,\hat\Delta_b)$, and the lag-$h$ cross-covariance is
+identified only where both series are observed, on the paired index set
+\begin{equation}
+  T_{ab}(h) = \{\, t : t\in T_a,\ t-h\in T_b \,\},
+  \qquad
+  n_{ab} = |T_{ab}(0)| = |T_a\cap T_b|.
+\end{equation}
+The pair-of-pairs overlap $n_{ab}$ is thus the sample size on which the cross-covariance
+of $d^a$ and $d^b$ is estimated. It is not the sample size that scales the entry.
+$\hat\Delta_a$ averages over $n_a$ dates and $\hat\Delta_b$ over $n_b$, and only the
+dates they share (and their near neighbours, under serial dependence) contribute to
+their covariance:
+\begin{equation}
+  \Omega_{ab}
+  = \frac{1}{n_a n_b}\sum_{t\in T_a}\sum_{s\in T_b}\Cov\big(d^a_t,d^b_s\big)
+  \;\approx\; \frac{n_{ab}}{n_a\,n_b}\;\omega_{ab},
+  \label{eq:omega-scaling}
+\end{equation}
+with $\omega_{ab}$ the long-run cross-covariance of $d^a$ and $d^b$. This is the familiar
+covariance of two means computed on partially overlapping samples; it reduces to
+$\omega_{ab}/n$ when $T_a=T_b$ has $n$ dates. With each series demeaned on its own
+support, $\tilde d^a_t = d^a_t - \bar d^a$, the Bartlett-weighted HAC estimator of the
+entry is
+\begin{equation}
+  \boxed{\;
+  \Omegahat_{ab}
+  = \frac{n_{ab}}{n_a\,n_b}\left[\hat\gamma^{ab}_0
+    + \sum_{h=1}^{L_{ab}} w_h\big(\hat\gamma^{ab}_h + \hat\gamma^{ba}_h\big)
+    \right],
+  \qquad
+  \hat\gamma^{ab}_h
+  = \frac{1}{n_{ab}}\!\!\sum_{t\in T_{ab}(h)}\!\! \tilde d^a_t\,\tilde d^b_{t-h},
+  \qquad
+  w_h = 1-\frac{h}{L_{ab}+1}.
+  \;}
+  \label{eq:omega-entry}
+\end{equation}
+Both lag directions appear because cross-covariances are not lag-symmetric
+($\gamma^{ab}_{-h}=\gamma^{ba}_h$). Two design choices settle the estimator.
+
+\paragraph{Bandwidth.} Each difference series has its own persistence, so I set the
+bandwidth per series, $L_a$, by the Andrews plug-in of \S\ref{sec:bandwidth}. An
+off-diagonal entry needs one bandwidth for the shared lag sum; I take
+$L_{ab}=\min\{L_a,L_b\}$, the more cautious of the two choices on short overlaps. The
+rule reduces to $L_{aa}=L_a$ on the diagonal. The implementation further caps $L_{ab}$ at
+$n_{ab}-1$ and sets to zero any off-diagonal entry whose overlap $n_{ab}$ is below a
+minimum (two dates). The rule has a cost. The lagged cross-covariances of $d^a$ and $d^b$
+are not bounded by either series' own persistence, so if one of them is serially
+uncorrelated (and its plug-in bandwidth stays bounded) while the other is persistent,
+the truncated cross sum need not converge to the long-run cross-covariance. The diagonal
+entries are unaffected.
+
+\paragraph{Normalization.} Multiplying out, $\Omegahat_{ab} = s_{ab}/(n_a n_b)$, where
+$s_{ab}$ is the Bartlett-weighted cross sum over jointly observed dates. Written this
+way, the entry is defined, and zero, when the two supports never meet. The divisor is a
+single number per entry, applied uniformly across all lags rather than by the per-lag
+count $|T_{ab}(h)|$, and it is the product of the two support sizes rather than the
+square of their overlap. Both choices matter for positive semi-definiteness. Fill each
+demeaned series with zeros off its support and stack them into $y_t\in\Real^q$. The
+cross sums over jointly observed dates are then exactly the full-sample sums of the
+zero-filled series, so under a common bandwidth $L$ the matrix
+$S=(s_{ab})$ is the Bartlett quadratic form
+$\sum_t y_t y_t^\top + \sum_{h=1}^{L} w_h \sum_t (y_t y_{t-h}^\top + y_{t-h}y_t^\top)$,
+which is positive semi-definite, and
+\begin{equation}
+  \Omegahat = N^{-1} S\, N^{-1},
+  \qquad N = \operatorname{diag}\big(n_a\big)_{a=1}^{q},
+  \label{eq:omega-congruence}
+\end{equation}
+is a congruence of it, hence also positive semi-definite on any unbalanced panel,
+provided no entry is zeroed or truncated by the implementation rules above, that is,
+provided every pair of pairs whose supports come within $L$ periods of each other shares
+more than $\max(L,1)$ dates. A per-lag normalization scales each lag block differently
+and destroys the quadratic form. Dividing by $n_{ab}^2$, the natural-looking choice, is
+not a congruence either. It also overstates every off-diagonal entry by the factor
+$n_a n_b/n_{ab}^2\ge 1$, so the implied correlations between contrasts are too strong
+whenever supports differ.
+
+\subsection{Nesting and diagonal-consistency}
+\label{sec:omega-nesting}
+
+With this normalization the estimator ties back to the rest of the pipeline.
+\emph{Nesting}: when the panel is balanced and a common bandwidth $L$ is used,
+$n_a=n_{ab}=n$ for every $a,b$, and each entry \eqref{eq:omega-entry} coincides with the
+$(a,b)$ entry of the stacked estimator \eqref{eq:omega-balanced}. The pairwise-of-pairs
+route is therefore a strict generalization, not a different method.
+\emph{Diagonal-consistency}: on the diagonal $a=b$, \eqref{eq:omega-entry} reduces to
+the univariate Bartlett long-run variance of $d^a_t$ divided by $n_a$. When the support
+$T_a$ is a contiguous block of periods, as on a balanced panel or under staggered entry
+and exit, this is exactly the squared serial-dependence standard error,
+$\Omegahat_{aa} = (\seNW{a})^2$. When $T_a$ has gaps, the two differ slightly.
+\eqref{eq:omega-entry} pairs periods that are $h$ calendar periods apart, whereas
+$\seNW{a}$ counts lags in common observations (\S\ref{sec:nw}), so autocovariance terms
+that straddle a gap enter one but not the other (Appendix~\ref{app:impl-details}
+quantifies the difference on the NGDP panel). Either way, calibration of the direct
+construction is automatic, because it studentizes by its own diagonal. The simulation
+denominator $\sqrt{\Omegahat_{aa}}$ and the variance of the simulated numerator are the
+same diagonal entry; after the projection of \S\ref{sec:omega-psd}, they are the same
+entry of the projected matrix.
+
+\subsection{Nearest-PSD projection}
+\label{sec:omega-psd}
+
+By \eqref{eq:omega-congruence}, $\Omegahat$ is positive semi-definite under a common
+bandwidth, balanced or not. The pipeline, however, uses the per-series Andrews bandwidth
+of \S\ref{sec:bandwidth} and, off the diagonal, the shorter of the two,
+$L_{ab}=\min\{L_a,L_b\}$. Entries assembled at different bandwidths no longer form a
+single quadratic form. On a balanced panel the matrix is then generically indefinite,
+with small negative eigenvalues, because its target has rank $p-1<q$ and sits on the
+boundary of the positive semi-definite cone. On an unbalanced panel it can be indefinite
+as well (\S\ref{sec:caveat}). The repair is again the Frobenius-nearest PSD projection
+\citep{higham1988}, applied directly to the modelled object $\Omegahat$. I report
+$\Frob{\Omegahat-\Omegahat^{+}}$ as a diagnostic of how far the heterogeneous bandwidths
+push the estimate from positive semi-definiteness.
+
+\section{Equivalence of the two constructions}
+\label{sec:equivalence}
+
+Let $A$ be the fixed $q\times p$ contrast matrix whose row $a=(j,k)$ has $+1$ in column
+$j$, $-1$ in column $k$, and zero elsewhere, so that $D = A Z$ is the vector of pairwise
+differences of a level vector $Z$. Approach~1 draws $Z\sim\Normal(0,\Sh^{+})$ and forms
+$D=AZ\sim\Normal(0,A\Sh^{+} A^\top)$; Approach~2 draws $D\sim\Normal(0,\Omegahat^{+})$
+directly. The two are the same test when $A\Sh A^\top$ and $\Omegahat$ agree, together
+with the standard errors that studentize the draws. Everything rests on one algebraic
+fact: a covariance of the form $A\Sigma A^\top$ is determined by its diagonal.
+
+\begin{lemma}[Polarization]
+\label{lem:polarization}
+Let $\Sigma$ be any symmetric $p\times p$ matrix and
+$S^2_{jk}=\Sigma_{jj}+\Sigma_{kk}-2\Sigma_{jk}$. For pairs $a=(j,k)$ and $b=(l,m)$,
+\begin{equation}
+  \big(A\Sigma A^\top\big)_{ab}
+  = \Sigma_{jl}-\Sigma_{jm}-\Sigma_{kl}+\Sigma_{km}
+  = \tfrac12\big(S^2_{jm}+S^2_{kl}-S^2_{jl}-S^2_{km}\big).
+  \label{eq:polarization}
+\end{equation}
+Moreover $-\tfrac12 J S^2 J = J\Sigma J$, and therefore
+$A\big(-\tfrac12 J S^2 J\big)A^\top = A\Sigma A^\top$.
+\end{lemma}
+
+\begin{proof}
+The first equality is the covariance of the contrasts $Z_j-Z_k$ and $Z_l-Z_m$ when
+$\Var(Z)=\Sigma$. For the second, substitute the definition of $S^2$. The diagonal terms
+cancel in pairs,
+$(\Sigma_{jj}+\Sigma_{mm})+(\Sigma_{kk}+\Sigma_{ll})-(\Sigma_{jj}+\Sigma_{ll})
+-(\Sigma_{kk}+\Sigma_{mm})=0$, leaving
+$-2\Sigma_{jm}-2\Sigma_{kl}+2\Sigma_{jl}+2\Sigma_{km}$; the identity also holds when
+the pairs share an index, with $S^2_{jj}=0$. For the last statement, write
+$S^2=\sigma\one^\top+\one\sigma^\top-2\Sigma$ with $\sigma=(\Sigma_{11},\dots,
+\Sigma_{pp})^\top$. Since $J\one=0$, the first two terms vanish under double-centring,
+so $-\tfrac12 JS^2J=J\Sigma J$. Finally, $A\one=0$ gives $AJ=A$, hence
+$AJ\Sigma JA^\top=A\Sigma A^\top$.
+\end{proof}
+
+The lemma makes precise what the MDS route recovers. It does not recover $\Sigma$: the
+level of the losses, and with it the common shock, is not identified from contrasts. It
+recovers only $J\Sigma J$, and the contrast matrix cannot tell the two apart. Given the
+pairwise variances of any matrix of the form $A\Sigma A^\top$, the MDS route reproduces
+that matrix entry by entry. Whether it reproduces the covariance the procedure needs
+therefore turns on whether that covariance has the form $A\Sigma A^\top$ at all.
+
+\begin{proposition}[Equivalence on a balanced panel]
+\label{prop:equivalence}
+Suppose every forecaster is observed on the same $n$ dates, so that
+$\hat\Delta=A\hat\theta$ with $\hat\theta$ the vector of mean losses, and let
+$\Sigma_n=\Var(\hat\theta)$.
+\begin{enumerate}[label=(\roman*)]
+  \item \emph{Population.} $\OmegaDirect=\Var(\hat\Delta)=A\Sigma_nA^\top$, and the MDS
+    map applied to the true pairwise variances returns it:
+    $A\big(-\tfrac12 JS^2J\big)A^\top=\OmegaDirect$.
+  \item \emph{Finite samples, common bandwidth.} If every pairwise standard error and
+    $\Omegahat$ use the same Bartlett bandwidth $L$, then $\Sh=-\tfrac12 J\hat S^2J$ is
+    positive semi-definite, neither construction is projected, $A\Sh A^\top=\Omegahat$,
+    and $\seNW{a}=\sqrt{\Omegahat_{aa}}$ for every $a$. The two constructions produce
+    identically distributed studentized draws: they are the same test.
+  \item \emph{Asymptotically, per-series bandwidths.} If $n\Sigma_n\to\Sigma_\infty$ with
+    $A\Sigma_\infty A^\top$ having a positive diagonal, and every pairwise standard error
+    and every entry of $\Omegahat$ is consistent after scaling by $n$, i.e.\
+    $n(\seNW{a})^2\to_p(A\Sigma_\infty A^\top)_{aa}$ and
+    $n\Omegahat_{ab}\to_p(A\Sigma_\infty A^\top)_{ab}$ --- which the Andrews plug-in
+    delivers under the conditions of \S\ref{sec:bandwidth} when every difference series
+    is persistent, so that every $L_{ab}\to\infty$; if some $L_a$ stays bounded, the
+    off-diagonal entries involving $a$ are consistent only if the corresponding
+    cross-covariances vanish at the truncated lags --- then
+    $nA\Sh^{+}A^\top$ and $n\Omegahat^{+}$ converge in probability to the same limit
+    $A\Sigma_\infty A^\top$, and the critical values of the two constructions converge to
+    the same limit.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) On a balanced panel $\hat\Delta_a=\hat\theta_j-\hat\theta_k$ for every pair, so
+$\hat\Delta=A\hat\theta$ and $\OmegaDirect=A\Sigma_nA^\top$. The true pairwise variances
+are its diagonal, $S^2_{jk}=(\Sigma_n)_{jj}+(\Sigma_n)_{kk}-2(\Sigma_n)_{jk}$, and
+Lemma~\ref{lem:polarization} with $\Sigma=\Sigma_n$ gives the claim.
+
+(ii) Let $x_t\in\Real^p$ be the losses at date $t$ and $\tilde x_t=x_t-\bar x$. The
+difference vector is $d_t=Ax_t$, and demeaning commutes with $A$, so
+$\tilde d_t=A\tilde x_t$ and every sample autocovariance factors,
+$\Gammahat_h(d)=A\Gammahat_h(x)A^\top$. On a balanced panel $\Omegahat$ reduces to the
+stacked estimator \eqref{eq:omega-balanced} (nesting, \S\ref{sec:omega-nesting}), hence
+$\Omegahat=A\hat VA^\top$ with $\hat V$ the $p$-variate Bartlett Newey--West estimator of
+$\Var(\hat\theta)$, which is positive semi-definite. By diagonal-consistency (the
+supports are contiguous) the diagonal of $\Omegahat$ is $(\seNW{a})^2$, so
+$\hat S^2_{jk}=\hat V_{jj}+\hat V_{kk}-2\hat V_{jk}$. Lemma~\ref{lem:polarization} with
+$\Sigma=\hat V$ gives $\Sh=J\hat VJ$, which is positive semi-definite as a congruence of
+$\hat V$, so its projection is the identity. And $A\Sh A^\top=A\hat VA^\top=\Omegahat$,
+which is positive semi-definite and likewise unprojected. The MDS draws
+$(Z_j-Z_k)/\seNW{a}$ with $Z\sim\Normal(0,\Sh)$ are $AZ\sim\Normal(0,\Omegahat)$
+divided by $\seNW{a}=\sqrt{\Omegahat_{aa}}$, which is the direct construction's
+$D_a/\sqrt{\Omegahat_{aa}}$ in distribution. The observed statistics share the same
+denominators.
+
+(iii) By consistency, $n\hat S^2$ converges to the matrix of squared contrast distances
+of $\Sigma_\infty$. Double-centring is linear and the nearest-PSD projection is
+continuous and positively homogeneous, so $nA\Sh^{+}A^\top=A\big(-\tfrac12 J(n\hat S^2)J
+\big)^{+}A^\top$ converges to $A(J\Sigma_\infty J)^{+}A^\top$. The limit $J\Sigma_\infty
+J$ is positive semi-definite, so the projection acts as the identity there, and by
+Lemma~\ref{lem:polarization} the limit is $A\Sigma_\infty A^\top$. Likewise
+$n\Omegahat\to A\Sigma_\infty A^\top$, a positive semi-definite limit, so
+$n\Omegahat^{+}$ has the same limit. Both studentizers, $n(\seNW{a})^2$ and
+$n\Omegahat^{+}_{aa}$, converge to the positive $(A\Sigma_\infty A^\top)_{aa}$. Both
+vectors of studentized draws therefore converge in distribution to $\Normal(0,R)$, with
+$R$ the correlation matrix of $A\Sigma_\infty A^\top$. The maximum of the signed entries
+of a centred Gaussian vector with positive-variance components, over any non-empty set
+of ordered contrasts, has a continuous distribution function that is strictly increasing
+on $(0,\infty)$. Hence the critical values for any given set of active contrasts converge
+to the same limit.
+\end{proof}
+
+\begin{remark}[Unbalanced panels: two different targets]
+\label{rem:unbalanced-targets}
+Proposition~\ref{prop:equivalence} uses balance at its first step. When the supports
+differ, $\hat\Delta_a$ is the mean of $d^a$ over its own support $T_a$, and in general
+$\hat\Delta$ is not $A\hat\theta$ for any vector $\hat\theta$. The combination
+$\hat\Delta_{12}+\hat\Delta_{23}-\hat\Delta_{13}$, identically zero on a balanced panel,
+is now a non-degenerate combination of means over three different sets of dates. The
+target $\OmegaDirect=\Var(\hat\Delta)$ then (for $p\ge3$) generally has full rank
+$q>p-1$, whereas every matrix $A\Sigma A^\top$ has rank at most $p-1$. No level
+covariance reproduces $\OmegaDirect$, and \eqref{eq:polarization} fails for it: its
+off-diagonal entries are not functions of its diagonal. The MDS route nevertheless sets
+every off-diagonal entry from the pairwise variances through \eqref{eq:polarization}. On
+an unbalanced panel it therefore estimates a different object from $\OmegaDirect$ even
+with consistent inputs. Moreover, the true pairwise variances need not be
+Euclidean-embeddable, and that failure is part of what its projection repairs. The
+direct estimator estimates each entry from the data and, by \eqref{eq:omega-scaling},
+targets $\OmegaDirect$ itself (subject to the bandwidth caveat of
+\S\ref{sec:omega-unbal}).
+\end{remark}
+
+On a balanced panel, then, the two constructions are the same test, and Approach~2 is
+the cleaner route to it: it is estimable directly from the data, its calibration is
+automatic rather than imposed, and it avoids the double-centring reconstruction and the
+non-uniqueness of \S\ref{sec:nonuniqueness}. On an unbalanced panel Approach~2 is not
+merely the better-calibrated of two routes to a common answer. It is the only one of the
+two that targets the covariance of the contrasts the procedure tests.
+
+\section{What the direct approach buys, and when it needs the projection}
+\label{sec:caveat}
+
+Three properties of the direct construction are easily conflated. The first is
+\emph{positive semi-definiteness}. By \eqref{eq:omega-congruence}, $\Omegahat$ is
+positive semi-definite under a common bandwidth on balanced and unbalanced panels alike;
+imbalance by itself does not break the guarantee. Heterogeneity of the bandwidth does.
+With the per-series Andrews bandwidth of \S\ref{sec:bandwidth}, entries assembled at
+different bandwidths $L_{ab}=\min\{L_a,L_b\}$ no longer form a single quadratic form, and
+the matrix is generically indefinite even on a balanced panel; its negative eigenvalues
+remain small when the persistences of the difference series are similar. The guarantee
+should therefore be stated as ``common bandwidth'', not ``balanced panel''.
+
+The second is \emph{calibration}. The direct construction studentizes by its own
+diagonal, so its draws are unit-variance by construction, whereas the MDS route imposes
+calibration before its projection and loses it to the extent that the projection
+intervenes (\S\ref{sec:mds-psd}). The third is the \emph{target}: on an unbalanced
+panel only the direct construction estimates the covariance of the contrasts
+(Remark~\ref{rem:unbalanced-targets}). Both constructions use the nearest-PSD
+projection, but on different objects. Approach~2 applies it to the modelled object
+$\Omegahat$, where it repairs only the bandwidth heterogeneity (including the truncation
+$L_{ab}\le n_{ab}-1$ and the zeroed thin overlaps). Approach~1 applies it to a
+reconstructed level covariance, where on an unbalanced panel it must also absorb the
+mismatch between the pairwise variances and any configuration of points.

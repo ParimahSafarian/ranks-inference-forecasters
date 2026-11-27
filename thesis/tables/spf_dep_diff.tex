@@ -1,0 +1,28 @@
+\begin{table}[htb]
+  \centering
+  \caption[The common shock in loss differences]{The common shock in the loss differences of the top-8
+  forecasters. ``Cancelled'' is the median over pairs of $2\Cov(X_j,X_k)/(\Var X_j+\Var X_k)$, the share of the
+  loss variance removed by differencing. The remaining columns relate the cross-pair mean of $(d^{jk}_t)^2$ to the
+  squared consensus error $\bar e_t^{\,2}$: their Spearman correlation, and the share of $\sum_t (d^{jk}_t)^2$ that
+  falls in the 10\% of periods with the largest $\bar e_t^{\,2}$, on the full sample and without 2020--21.
+  $^\dagger$As in Table~\ref{tab:spf-dep-serial}.}
+  \label{tab:spf-dep-diff}
+  \small
+  \begin{tabular}{lccccc}
+    \toprule
+    & & \multicolumn{2}{c}{$\rho_S\big(\bar e_t^{\,2},\,\overline{d_t^{\,2}}\big)$}
+      & \multicolumn{2}{c}{share in top-10\% periods}\\
+    \cmidrule(lr){3-4}\cmidrule(lr){5-6}
+    panel & cancelled & full & ex-2020/21 & full & ex-2020/21\\
+    \midrule
+    U.S.\ NGDP & 0.91 & 0.76 & 0.74 & 96\% & 92\%\\
+    U.S.\ RGDP & 1.00 & 0.87 & 0.86 & 96\% & 99\%\\
+    U.S.\ UNEMP & 0.82 & 0.71 & 0.61 & 100\% & 73\%\\
+    Euro area HICP & 0.97 & 0.63 & 0.65 & 94\% & 94\%\\
+    Euro area RGDP & 0.98 & 0.89 & 0.87 & 96\% & 92\%\\
+    \midrule
+    U.S.\ NGDP, growth$^\dagger$ & 0.75 & 0.68 & 0.67 & 84\% & 31\%\\
+    U.S.\ RGDP, growth$^\dagger$ & 0.81 & 0.73 & 0.72 & 99\% & 71\%\\
+    \bottomrule
+  \end{tabular}
+\end{table}

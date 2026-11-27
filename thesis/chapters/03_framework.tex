@@ -1,0 +1,88 @@
+\chapter{Framework and Setup}
+\label{ch:framework}
+
+I rank $p$ forecasters by a performance feature $\theta_j$, the mean loss of
+forecaster $j$ (lower $\theta$ means a better forecaster), and report simultaneous
+confidence sets for the ranks rather than a single point ordering.
+
+\section{The unbalanced panel and the difference series}
+\label{sec:setup}
+
+Let $X_{t,j}$ denote the loss of forecaster $j$ at period $t$ (the squared forecast
+error in the running example; the Brier score and the sMAPE in Chapter~\ref{ch:apps}),
+let $T_j$ be the set of periods in which forecaster $j$ submitted a forecast, and let
+$\theta_j = \E[X_{t,j}]$, assumed not to depend on $t$ (it suffices that
+$\E[X_{t,j}-X_{t,k}]$ does not). For an ordered pair of forecasters $(j,k)$, let
+$\Tjk = T_j \cap T_k$ be the set of periods in which both submitted a forecast,
+with $\njk = |\Tjk|$ (pairs with $\njk < 2$ are dropped). The panel is
+\emph{unbalanced}: forecasters enter and exit, so different pairs are observed on
+different, partially overlapping windows. The estimated contrast in mean loss is the
+sample mean of the pairwise difference series,
+\begin{equation}
+  \hat{\Delta}_{j,k} \;=\; \dbar^{\,jk}
+  \;=\; \frac{1}{\njk}\sum_{t\in \Tjk} d^{jk}_t ,
+  \qquad d^{jk}_t = X_{t,j}-X_{t,k}.
+  \label{eq:contrast}
+\end{equation}
+
+\paragraph{Differencing as a partial defence.} Decompose each loss into a shared and an
+idiosyncratic component,
+\begin{equation}
+  X_{t,j} \;=\; c_t + \varepsilon_{t,j},
+  \qquad \Cov(c_t,\varepsilon_{t,j}) = 0,
+  \label{eq:decomp}
+\end{equation}
+where $c_t$ is the common, crisis-driven shock (in a crisis quarter every forecaster
+records a large squared error) and $\varepsilon_{t,j}$ is forecaster-specific. The
+pairwise difference removes the common shock exactly:
+\begin{equation}
+  d^{jk}_t \;=\; X_{t,j} - X_{t,k}
+  \;=\; \varepsilon_{t,j} - \varepsilon_{t,k}
+  \qquad\text{(the shock cancels).}
+  \label{eq:cancel}
+\end{equation}
+Consequently $c_t$ inflates the marginal (level) variance $\Var(\bar{X}_{\cdot,j})$ but
+not the difference standard error $\se(\dbar^{\,jk})$. The ranking uses only contrasts,
+so it works with the well-behaved quantity. The cancellation is exact under the additive
+model \eqref{eq:decomp}. For squared errors, however, the common component of the
+forecast error still scales the loss differences (\S\ref{sec:apps-spf-dependence}),
+which makes the difference series of the applications heteroskedastic.
+
+\section{Ranks as signs of pairwise contrasts}
+\label{sec:ranks}
+
+The signs of the pairwise contrasts $\Delta_{j,k}=\theta_j-\theta_k$ determine the rank
+of forecaster $j$ entirely: $j$ is better than $k$ exactly when $\Delta_{j,k}<0$. Rank
+inference therefore reduces to simultaneous inference on the signs of all $\binom{p}{2}$
+pairwise differences. Let $N^+_j$ be the number of forecasters confirmed better than $j$
+and $N^-_j$ the number confirmed worse (the pairs on which the sign of $\Delta_{j,k}$ is
+established at the chosen level). The rank confidence set for $j$ is
+\begin{equation}
+  \rankci{j} \;=\; \big[\,N^+_j+1,\;\; p-N^-_j\,\big].
+  \label{eq:rankset}
+\end{equation}
+The sets hold jointly: with probability at least $1-\alpha$ (asymptotically), every
+forecaster's true rank lies in its set, so the ranks outside $\rankci{j}$ are excluded
+for all $j$ at once. The uninformative extreme is $[1,p]$.
+
+\section{The pipeline and where my contribution enters}
+\label{sec:pipeline}
+
+The procedure of \citet{mogstad2024} takes an estimate of the covariance of
+$\hat\theta$, which enters only through the joint law of the studentized contrasts, and
+returns simultaneous rank confidence sets. I supply that law either through a level
+covariance $\Sh$ or directly through a contrast covariance $\Omegahat$, and use the
+procedure unchanged. My contribution is confined to two upstream steps, the construction
+of the objects that procedure consumes:
+\begin{equation*}
+  X_{t,j}\;\xrightarrow{\text{difference}}\;d^{jk}_t
+  \;\xrightarrow[\text{(contribution, Ch.\,\ref{ch:serial})}]{\text{HAC}}\;\seNW{jk}
+  \;\xrightarrow[\text{(contribution, Ch.\,\ref{ch:cross})}]{\text{covariance}}\;\Sh \text{ or } \Omegahat
+  \;\xrightarrow{\text{simulate}}\;\text{studentized max null}
+  \;\xrightarrow{\text{stepdown}}\;\rankci{j}.
+\end{equation*}
+The covariance step faces one complication: the simulation-based critical value
+(Chapter~\ref{ch:downstream}) requires a full covariance matrix, not just the pairwise
+standard errors, and that matrix must be built without reintroducing the common shock
+removed in \eqref{eq:cancel}. Chapters~\ref{ch:serial} and~\ref{ch:cross} develop the
+two steps; the rest is the procedure of \citet{mogstad2024}.
