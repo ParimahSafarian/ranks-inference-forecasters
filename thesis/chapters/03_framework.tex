@@ -16,8 +16,12 @@ $\E[X_{t,j}-X_{t,k}]$ does not). For an ordered pair of forecasters $(j,k)$, let
 $\Tjk = T_j \cap T_k$ be the set of periods in which both submitted a forecast,
 with $\njk = |\Tjk|$ (pairs with $\njk < 2$ are dropped). The panel is
 \emph{unbalanced}: forecasters enter and exit, so different pairs are observed on
-different, partially overlapping windows. The estimated contrast in mean loss is the
-sample mean of the pairwise difference series,
+different, partially overlapping windows. Figure~\ref{fig:panel-balance} shows how
+the observation pattern determines the overlap $T_{jk}$ and its size $n_{jk}$.
+
+\figPanelBalance
+
+The estimated contrast in mean loss is the sample mean of the pairwise difference series,
 \begin{equation}
   \hat{\Delta}_{j,k} \;=\; \dbar^{\,jk}
   \;=\; \frac{1}{\njk}\sum_{t\in \Tjk} d^{jk}_t ,
